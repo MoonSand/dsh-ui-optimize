@@ -1,0 +1,87 @@
+{
+  "format": 1,
+  "title": {
+    "en": "MoonSand DSH plugins",
+    "zh": "MoonSand DSH 插件"
+  },
+  "description": {
+    "en": "Self-hosted plugin market index for MoonSand's DeepSeek Harness plugins. Open the Plugins page, go to Discover, add this file's https URL as an index source, then browse and install from it.",
+    "zh": "MoonSand 的 DeepSeek Harness 插件自托管市场索引：在「插件页 → 发现 → 添加索引源」里填入本文件的 https 地址即可浏览与安装。"
+  },
+  "metadata": {
+    "categories": {
+      "interface": {
+        "title": {
+          "en": "Interface",
+          "zh": "界面"
+        }
+      }
+    },
+    "labels": {
+      "theme": {
+        "title": {
+          "en": "Theme",
+          "zh": "主题"
+        }
+      },
+      "desktop": {
+        "title": {
+          "en": "Desktop",
+          "zh": "桌面端"
+        }
+      },
+      "sidebar": {
+        "title": {
+          "en": "Sidebar",
+          "zh": "侧边栏"
+        }
+      }
+    }
+  },
+  "plugins": [
+    {
+      "name": "@moonsand/dsh-ui-optimize",
+      "title": {
+        "en": "dsh-ui-optimize",
+        "zh": "界面优化"
+      },
+      "description": {
+        "en": "Theme gallery plus desktop actions for the DSH web interface, each with its own switch. Eight minimalist themes (Celadon, Linen, Cream, Graphite, Indigo, Slate, Sage, Rose) recolour the whole UI through a single theme-token layer — no structural CSS and no DOM reads; each theme defines one palette for light and one for dark and follows the Appearance setting. The desktop actions add Reload UI and Restart app at the sidebar foot: Reload reloads the page and client plugins only, Restart relaunches the app together with its Host (desktop only; a browser session degrades to a page reload). All settings live in one page under Settings → UI Optimize; the theme choice is stored in browser localStorage.",
+        "zh": "给 DSH 界面换主题，并把侧栏底部的「刷新界面 / 重启应用」收进同一个插件，两个功能各有独立开关。8 套极简主题（青瓷、亚麻、奶油、石墨、靛蓝、雾蓝、苔绿、玫瑰）通过单一主题变量层整套换色，不注入结构性 CSS、不读其他插件 DOM；每套为浅色与深色各定义一组配色，切换「外观」时自动跟随。桌面操作用侧栏底部两个按钮：刷新只重载页面与客户端插件，重启会连同 Host 重开整个应用（仅桌面端；网页端降级为刷新页面）。所有设置集中在「设置 → 界面优化」一页；主题选择保存在浏览器 localStorage。"
+      },
+      "author": "MoonSand",
+      "homepage": "https://github.com/MoonSand/dsh-ui-optimize#readme",
+      "repository": {
+        "url": "https://github.com/MoonSand/dsh-ui-optimize"
+      },
+      "metadata": {
+        "category": "interface",
+        "keywords": [
+          "dsh",
+          "dsh-plugin",
+          "deepseek-harness",
+          "theme",
+          "electron",
+          "restart"
+        ],
+        "labels": [
+          "theme",
+          "desktop",
+          "sidebar"
+        ]
+      },
+      "versions": [
+        {
+          "version": "0.8.4",
+          "publishTimestamp": 1793976506,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {
+            "dsh": ">=0.2.1-rc.3"
+          }
+        }
+      ]
+    }
+  ]
+}
