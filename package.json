@@ -1,0 +1,53 @@
+{
+  "name": "@moonsand/dsh-ui-optimize",
+  "version": "0.8.4",
+  "type": "module",
+  "description": "Two features for the DSH web interface, each with its own switch: a minimalist theme gallery (eight themes, one palette for light and one for dark) and the desktop Reload/Restart actions at the sidebar foot. · DSH 界面优化：8 套极简主题（浅色与深色各一组配色）+ 侧栏底部的刷新/重启按钮，两个功能各有独立开关。",
+  "license": "MIT",
+  "author": "MoonSand",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MoonSand/dsh-ui-optimize.git"
+  },
+  "homepage": "https://github.com/MoonSand/dsh-ui-optimize#readme",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "theme",
+    "electron",
+    "restart"
+  ],
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "desktop-restart.host.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg"
+  ],
+  "engines": {
+    "dsh": ">=0.2.1-rc.3"
+  },
+  "scripts": {
+    "test": "node scripts/smoke.mjs"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true
+    }
+  }
+}

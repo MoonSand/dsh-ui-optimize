@@ -1,0 +1,72 @@
+name: Publish to npm
+
+# Publishing is deliberate, never a side effect of pushing code.
+#
+# The workflow wakes up on every push to main, but the job only runs when the
+# commit message starts with a [release] marker (or when started by hand).
+# Routine commits, docs fixes and refactors therefore push nothing to npm. To
+# publish: bump the version and put [release] at the start of the commit
+# message — that marker is the human decision.
+#
+# No npm token is stored anywhere: npm trusts this workflow's OIDC identity
+# (trusted publishing), so there is nothing to rotate and nothing that expires.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # Required for OIDC: this is what npm trusts instead of a token.
+  id-token: write
+
+jobs:
+  publish:
+    # The gate: a push only publishes when its message starts with [release].
+    # startsWith (not contains) so that merely mentioning the marker in prose
+    # can never trigger a publish.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      startsWith(github.event.head_commit.message, '[release]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      # Trusted publishing needs an OIDC-aware npm CLI (11.5.1 or newer).
+      - name: Use the latest npm
+        run: npm install --global npm@latest
+
+      - name: Toolchain versions
+        run: |
+          node --version
+          npm --version
+
+      - name: Smoke test
+        run: node scripts/smoke.mjs
+
+      # Second gate: never republish a version that already exists, so a stray
+      # marker cannot turn a good release into a no-op failure.
+      - name: Read version and check the registry
+        id: ver
+        run: |
+          VER=$(node -p "require('./package.json').version")
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          if npm view "@moonsand/dsh-ui-optimize@$VER" version >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::$VER is already published"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::$VER is new, will publish"
+          fi
+
+      # --provenance records how the artefact was built; --access public is
+      # required for scoped packages. No NODE_AUTH_TOKEN on purpose.
+      - name: Publish
+        if: steps.ver.outputs.exists == 'false'
+        run: npm publish --provenance --access public
