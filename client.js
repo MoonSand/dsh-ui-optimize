@@ -85,6 +85,7 @@ window.__ModuleLoader__.load({
         'desktop.restartSwitch': 'Show the Restart app button',
         'desktop.restartSwitchHint': 'Sidebar foot. Restarts the whole app including its Host; the current conversation is interrupted. Desktop app only',
         'desktop.restartNotDesktop': 'This is a browser session, so restart is unavailable — clicking it would only reload the page. The feature works only inside the desktop app.',
+        'desktop.reloadNotDesktop': 'This is a browser session, so the reload button is not offered — this shell already has its own refresh entry. The switch works only inside the desktop app.',
         'legacy.title': '@moonsand/dsh-desktop-restart is still installed',
         'legacy.body': 'Both plugins draw reload/restart buttons, so the sidebar foot will show two sets. Uninstall dsh-desktop-restart under Settings → Plugins and keep only this one.',
         storageNote: 'Storage unavailable — the choice lasts until this page reloads.',
@@ -142,6 +143,7 @@ window.__ModuleLoader__.load({
         'desktop.restartSwitch': '显示「重启应用」按钮',
         'desktop.restartSwitchHint': '侧栏底部。重启整个应用（含 Host），当前对话会中断；仅桌面端可用',
         'desktop.restartNotDesktop': '当前是网页端，重启不可用——点了只会刷新页面。此功能仅在桌面应用里有效。',
+        'desktop.reloadNotDesktop': '当前是网页端，刷新按钮不提供——这个外壳已经自带刷新入口。此开关仅在桌面应用里可开。',
         'legacy.title': '检测到 @moonsand/dsh-desktop-restart 仍在安装',
         'legacy.body': '两个插件都会提供刷新/重启按钮，侧栏底部会出现两套。请到「设置 → 插件」卸载 dsh-desktop-restart，只保留本插件。',
         storageNote: '浏览器存储不可用——选择的主题只在本次页面加载内有效。',
@@ -458,7 +460,10 @@ window.__ModuleLoader__.load({
      * each switch inventing its own check. */
     const FEATURES = {
       theme: { envs: ['desktop', 'web'] },
-      reload: { envs: ['desktop', 'web'] },
+      /* The fnOS shell has its own reload and restart entries, so these two stay
+       * desktop-only: in a browser session they would duplicate what the shell
+       * already offers, and the switch must not be turnable on there. */
+      reload: { envs: ['desktop'], reason: 'desktop.reloadNotDesktop' },
       restart: { envs: ['desktop'], reason: 'desktop.restartNotDesktop' },
       sidebar: { envs: ['desktop', 'web'], reason: 'sidebar.unavailable' },
     }
@@ -506,7 +511,22 @@ window.__ModuleLoader__.load({
         if (value !== 'desktop' && value !== 'web') return
         if (store.env === value) return
         store.env = value
-        store.notify()
+        /* Anything this shell cannot run is forced off the moment the probe
+         * answers: a `true` stored by a desktop session must not survive into a
+         * browser session, where `setFlag` refuses to turn the switch back on
+         * and the stored value would otherwise keep the button visible. */
+        const next = Object.assign({}, store.state, { version: 3 })
+        let dirty = false
+        const names = Object.keys(FEATURES)
+        for (let i = 0; i < names.length; i += 1) {
+          const name = names[i]
+          if (next[name] === true && !featureGate(name, value).available) {
+            next[name] = false
+            dirty = true
+          }
+        }
+        if (dirty) publish(next)
+        else store.notify()
       },
       setTheme(key) {
         publish(
@@ -722,6 +742,7 @@ body:not([data-ds-dark-theme]) .dsuik-mc > .dsuik-mc-b{display:none;}
       const [state, setState] = React.useState(store.state)
       const [legacyPresent, setLegacyPresent] = React.useState(false)
       const env = store.env
+      const reloadGate = featureGate('reload', env)
       const restartGate = featureGate('restart', env)
       /* The shelf also needs the slot API: without it the switch stays off and
        * says why, instead of offering something that cannot work. */
@@ -743,9 +764,7 @@ body:not([data-ds-dark-theme]) .dsuik-mc > .dsuik-mc-b{display:none;}
         let alive = true
         void readStatus().then(function (status) {
           if (!alive) return
-          if (status && typeof status.desktop === 'boolean') {
-            store.setEnv(status.desktop === true ? 'desktop' : 'web')
-          }
+          store.setEnv(shellEnv(status))
         })
         return function () {
           alive = false
@@ -835,10 +854,18 @@ body:not([data-ds-dark-theme]) .dsuik-mc > .dsuik-mc-b{display:none;}
               'div',
               { className: 'dsuik-rowtext' },
               h('span', { className: 'dsuik-rowname' }, translate('desktop.reloadSwitch')),
-              h('span', { className: 'dsuik-rowhint' }, translate('desktop.reloadSwitchHint')),
+              h(
+                'span',
+                { className: 'dsuik-rowhint' + (reloadGate.available ? '' : ' is-warn') },
+                reloadGate.available
+                  ? translate('desktop.reloadSwitchHint')
+                  : reloadGate.reason,
+              ),
             ),
             h(Switch, {
               checked: state.reload === true,
+              disabled: !reloadGate.available,
+              title: reloadGate.reason,
               label: translate('desktop.reloadSwitch'),
               onChange: function (next) {
                 store.setFlag('reload', next)
@@ -1035,20 +1062,52 @@ body:not([data-ds-dark-theme]) .dsuik-mc > .dsuik-mc-b{display:none;}
       )
     }
 
+    /* The Host route lives on the DSH web server, but a shell may serve the page
+     * under a path prefix and answer every other path with a text body (fnOS
+     * answers `invalid token` with HTTP 200) — so a successful status still has
+     * to be JSON carrying `desktop` before it counts. Try the page-relative URL
+     * first, then the root. */
     async function readStatus() {
+      const candidates = []
       try {
-        const response = await fetch('/ui-optimize/desktop/status', {
-          method: 'GET',
-          headers: { accept: 'application/json' },
-          credentials: 'same-origin',
-          cache: 'no-store',
-          signal: AbortSignal.timeout(6000),
-        })
-        if (!response.ok) return undefined
-        return await response.json()
+        candidates.push(new URL('ui-optimize/desktop/status', document.baseURI).href)
       } catch (err) {
-        return undefined
+        /* malformed baseURI: fall through to the root-relative URL */
       }
+      candidates.push('/ui-optimize/desktop/status')
+      for (let i = 0; i < candidates.length; i += 1) {
+        try {
+          const response = await fetch(candidates[i], {
+            method: 'GET',
+            headers: { accept: 'application/json' },
+            credentials: 'same-origin',
+            cache: 'no-store',
+            signal: AbortSignal.timeout(6000),
+          })
+          if (!response.ok) continue
+          const data = await response.json()
+          if (data && typeof data.desktop === 'boolean') return data
+        } catch (err) {
+          /* try the next candidate */
+        }
+      }
+      return undefined
+    }
+
+    /* Which shell this is. The Host probe is authoritative. When it cannot be
+     * read at all, the user agent still separates the Electron desktop app from
+     * any browser, and anything unrecognised counts as web: a browser session
+     * must never be offered a button it cannot honour. */
+    function shellEnv(status) {
+      if (status && typeof status.desktop === 'boolean') {
+        return status.desktop === true ? 'desktop' : 'web'
+      }
+      try {
+        if (/electron/i.test(navigator.userAgent || '')) return 'desktop'
+      } catch (err) {
+        /* no navigator: treat as web */
+      }
+      return 'web'
     }
 
     /**
@@ -1305,21 +1364,19 @@ body:not([data-ds-dark-theme]) .dsuik-mc > .dsuik-mc-b{display:none;}
         })
       }, [])
       const wide = props.wide !== false
-      const showReload = state.reload === true
-      const showRestart = state.restart === true
+      const reloadGate = featureGate('reload', store.env)
       const restartGate = featureGate('restart', store.env)
+      /* The stored preference and the shell's ability are two different things:
+       * a browser session must not draw a button it cannot honour, whatever the
+       * preference says. */
+      const showReload = state.reload === true && reloadGate.available
+      const showRestart = state.restart === true && restartGate.available
       if (!showReload && !showRestart) return null
       return h(
         'div',
         { className: 'dsuik-dsr-group' },
         showReload ? h(RefreshButton, { wide: wide }) : null,
-        showRestart
-          ? h(RestartButton, {
-              wide: wide,
-              unavailable: !restartGate.available,
-              reason: restartGate.reason,
-            })
-          : null,
+        showRestart ? h(RestartButton, { wide: wide }) : null,
       )
     }
 
@@ -1838,9 +1895,7 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
           let alive = true
           void readStatus().then(function (status) {
             if (!alive) return
-            if (status && typeof status.desktop === 'boolean') {
-              store.setEnv(status.desktop === true ? 'desktop' : 'web')
-            }
+            store.setEnv(shellEnv(status))
           })
           return function () {
             alive = false

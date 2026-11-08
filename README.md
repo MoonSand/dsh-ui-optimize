@@ -24,8 +24,8 @@ Celadon, Linen, Cream, Graphite, Indigo, Slate, Sage, Rose. Picking a card recol
 
 Two switches control the sidebar-foot buttons:
 
-- **Reload UI** — reloads the page and client plugins only; the Host and running tasks keep going
-- **Restart app** — restarts the whole app including its Host; interrupts the current conversation. **Desktop app only** — in a browser it degrades to reloading the page
+- **Reload UI** — reloads the page and client plugins only; the Host and running tasks keep going. **Desktop app only**: browser shells such as fnOS already ship their own refresh entry, so this switch stays off there and cannot be turned on
+- **Restart app** — restarts the whole app including its Host; interrupts the current conversation. **Desktop app only**: a browser session does not own the process that would have to be restarted
 
 ### Sidebar
 
@@ -40,7 +40,7 @@ The launcher follows the pattern of the community plugin [dsh-sidebar-shelf](htt
 ## Known limitations
 
 - The theme choice lives in browser `localStorage`; it is lost with the browser profile or site data
-- Restart works only in the desktop app; a browser session can only reload
+- Reload and Restart are **desktop-app only**: in a browser both switches are disabled and the sidebar-foot buttons are not rendered at all — the fnOS shell already provides its own refresh and restart entries
 - The restart action is a process-level operation that cannot be verified automatically
 - The **More** row is not folded; it stays in the native rail
 - The launcher keeps the shell's own panel order — it does not sort, pin or reorder
