@@ -1,12 +1,13 @@
 {
   "name": "@moonsand/dsh-ui-optimize",
-  "version": "0.9.29",
+  "version": "0.9.30",
   "type": "module",
   "description": "Switches that tune how DeepSeek Harness looks and behaves across the whole interface, not just a few screens — each works on its own and more arrive as the shell grows: an eight-theme minimalist gallery, sidebar panel folding, and reload/restart buttons at the sidebar foot. · 调 DeepSeek Harness 整体观感与操作的开关集合，管的是整套界面而不只是某几块；每个开关独立生效，随宿主能力增长继续增加：8 套极简主题画廊、侧栏面板收纳，以及侧栏底部的刷新界面与重启应用按钮。",
   "license": "MIT",
   "author": "MoonSand",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "repository": {
     "type": "git",
