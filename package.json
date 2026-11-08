@@ -1,8 +1,8 @@
 {
   "name": "@moonsand/dsh-ui-optimize",
-  "version": "0.9.26",
+  "version": "0.9.27",
   "type": "module",
-  "description": "Three features for the DSH web interface, each with its own switch: a minimalist theme gallery (eight themes, one palette for light and one for dark), the desktop Reload/Restart actions at the sidebar foot, and folding the sidebar panel rows into one Panels launcher. · DSH 界面优化：8 套极简主题（浅色与深色各一组配色）+ 侧栏底部的刷新/重启按钮 + 侧栏面板收成一个「面板」入口，三个功能各有独立开关。",
+  "description": "Switches that tune how DeepSeek Harness looks and behaves across the whole interface, not just a few screens — each works on its own and more arrive as the shell grows. Sidebar launcher pattern from dsh-sidebar-shelf (github.com/wumouren114/dsh-sidebar-shelf). · 调 DeepSeek Harness 整体观感与操作的开关集合，管的是整套界面而不只是某几块；每个开关独立生效，随宿主能力增长继续增加。侧栏启动面板的做法参考 dsh-sidebar-shelf（github.com/wumouren114/dsh-sidebar-shelf）。",
   "license": "MIT",
   "author": "MoonSand",
   "publishConfig": {

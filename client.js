@@ -34,8 +34,7 @@ window.__ModuleLoader__.load({
     const DICT = {
       en: {
         title: 'UI Optimize',
-        subtitle:
-          'Pick one theme and the whole interface follows. Each theme defines one palette for light and one for dark; switching Appearance between them carries the theme along — no separate version to pick.',
+        subtitle: 'Making the DSH interface pleasant to live in, one switch at a time.',
         defaultName: 'Default',
         defaultHint: 'Keep the current look',
         'section.theme': 'Theme',
@@ -65,7 +64,7 @@ window.__ModuleLoader__.load({
         'sidebar.hint': '↑↓ move · ↵ open · Esc close',
         'sidebar.more': 'More',
         'sidebar.switch': 'Fold the sidebar menu into one Panels entry',
-        'sidebar.switchHint': 'The menu rows collapse into a single launcher that lists every panel; panels a future plugin registers show up on their own. Also narrows the New Session button',
+        'sidebar.switchHint': 'The menu rows collapse into a single launcher that lists every panel; panels a future plugin registers show up on their own. Also makes the New Session button shorter',
         'desktop.label': 'Restart app',
         'desktop.hint': 'Restart DeepSeek Harness (app and Host)',
         'desktop.refresh': 'Reload UI',
@@ -91,8 +90,7 @@ window.__ModuleLoader__.load({
       },
       zh: {
         title: '界面优化',
-        subtitle:
-          '选一个主题，整个界面跟着换。每套主题为浅色与深色各定义一组配色，切换「外观」时自动跟随，不需要为两种模式各选一次。',
+        subtitle: '把 DSH 界面调得顺眼顺手，一个开关一件事。',
         defaultName: '默认',
         defaultHint: '保持当前外观',
         'section.theme': '主题',
@@ -122,7 +120,7 @@ window.__ModuleLoader__.load({
         'sidebar.hint': '↑↓ 选择 · ↵ 打开 · Esc 关闭',
         'sidebar.more': '更多',
         'sidebar.switch': '把侧栏菜单收进「面板」',
-        'sidebar.switchHint': '菜单行合并成一个入口，点开列出全部面板；新插件注册的面板会自动出现。同时把「新会话」按钮收窄',
+        'sidebar.switchHint': '菜单行合并成一个入口，点开列出全部面板；新插件注册的面板会自动出现。同时把「新会话」按钮压低一点',
         'desktop.label': '重启应用',
         'desktop.hint': '重启 DeepSeek Harness（应用与 Host）',
         'desktop.refresh': '刷新界面',
