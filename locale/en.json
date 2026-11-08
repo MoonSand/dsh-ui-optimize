@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "dsh-ui-optimize",
-    "description": "Minimalist theme gallery for the DSH interface: pick one card in Settings and the whole UI re-colours at once — no per-token tuning. Eight themes — Celadon, Linen, Cream, Graphite, Indigo, Slate, Sage, Rose — each define one palette for light and one for dark and follow the Appearance setting automatically. Choosing Default restores the original look. Colours travel only through the theme token layer, so an upstream redesign cannot break the layout or the plugin."
+    "description": "Minimalist theme gallery for the DSH interface: pick one card in Settings and the whole UI re-colours at once — no per-token tuning. Eight themes — Celadon, Linen, Cream, Graphite, Indigo, Slate, Sage, Rose — each define one palette for light and one for dark and follow the Appearance setting automatically. Choosing Default restores the original look. Colours travel only through the theme token layer, so an upstream redesign cannot break the layout or the plugin. The same page also folds the sidebar panel rows into one Panels entry that opens a two-column launcher with search and keyboard control, and adds the desktop Reload/Restart buttons at the sidebar foot — each feature has its own switch."
   }
 }

@@ -57,6 +57,15 @@ window.__ModuleLoader__.load({
         'theme.rose.hint': 'Dusty rose — warm without being loud',
         applyFailed: 'The theme is not reaching the interface.',
         'section.desktop': 'Desktop actions',
+        'section.sidebar': 'Sidebar',
+        'sidebar.shelf': 'Panels',
+        'sidebar.shelfEmpty': 'No matching panels',
+        'sidebar.count': 'panels',
+        'sidebar.search': 'Search panels…',
+        'sidebar.hint': '↑↓ move · ↵ open · Esc close',
+        'sidebar.more': 'More',
+        'sidebar.switch': 'Fold the sidebar menu into one Panels entry',
+        'sidebar.switchHint': 'The menu rows collapse into a single launcher that lists every panel; panels a future plugin registers show up on their own. Also narrows the New Session button',
         'desktop.label': 'Restart app',
         'desktop.hint': 'Restart DeepSeek Harness (app and Host)',
         'desktop.refresh': 'Reload UI',
@@ -105,6 +114,15 @@ window.__ModuleLoader__.load({
         'theme.rose.hint': '灰调玫瑰，暖而不吵',
         applyFailed: '主题未作用到界面。',
         'section.desktop': '桌面操作',
+        'section.sidebar': '侧栏',
+        'sidebar.shelf': '面板',
+        'sidebar.shelfEmpty': '没有匹配的面板',
+        'sidebar.count': '个面板',
+        'sidebar.search': '搜索面板…',
+        'sidebar.hint': '↑↓ 选择 · ↵ 打开 · Esc 关闭',
+        'sidebar.more': '更多',
+        'sidebar.switch': '把侧栏菜单收进「面板」',
+        'sidebar.switchHint': '菜单行合并成一个入口，点开列出全部面板；新插件注册的面板会自动出现。同时把「新会话」按钮收窄',
         'desktop.label': '重启应用',
         'desktop.hint': '重启 DeepSeek Harness（应用与 Host）',
         'desktop.refresh': '刷新界面',
@@ -383,7 +401,7 @@ window.__ModuleLoader__.load({
      * ------------------------------------------------------------------ */
 
     function defaultState() {
-      return { version: 3, theme: null, reload: true, restart: true }
+      return { version: 4, theme: null, reload: true, restart: true, sidebar: false }
     }
 
     function normalize(stored) {
@@ -394,6 +412,7 @@ window.__ModuleLoader__.load({
       }
       if (typeof stored.reload === 'boolean') out.reload = stored.reload
       if (typeof stored.restart === 'boolean') out.restart = stored.restart
+      if (typeof stored.sidebar === 'boolean') out.sidebar = stored.sidebar
       return out
     }
 
@@ -786,6 +805,29 @@ body:not([data-ds-dark-theme]) .dsuik-mc > .dsuik-mc-b{display:none;}
               label: translate('desktop.restartSwitch'),
               onChange: function (next) {
                 store.setFlag('restart', next)
+              },
+            }),
+          ),
+        ),
+        h(
+          'div',
+          { className: 'dsuik-section' },
+          h('p', { className: 'dsuik-sectiontitle' }, translate('section.sidebar')),
+          h(
+            'div',
+            { className: 'dsuik-row' },
+            h(
+              'div',
+              { className: 'dsuik-rowtext' },
+              h('span', { className: 'dsuik-rowname' }, translate('sidebar.switch')),
+              h('span', { className: 'dsuik-rowhint' }, translate('sidebar.switchHint')),
+            ),
+            h(Switch, {
+              checked: state.sidebar === true,
+              disabled: !slotsCoreApi,
+              label: translate('sidebar.switch'),
+              onChange: function (next) {
+                store.setFlag('sidebar', next)
               },
             }),
           ),
@@ -1200,6 +1242,486 @@ body:not([data-ds-dark-theme]) .dsuik-mc > .dsuik-mc-b{display:none;}
     }
 
     /* ------------------------------------------------------------------ *
+     * Sidebar panel shelf (feature 3)
+     *
+     * Modelled on dsh-sidebar-shelf: one native row registered into
+     * `sidebar.panellist` becomes the launcher, one scoped rule hides the other
+     * rows, and the popover lists every registered panel read live from
+     * `entriesOfSlot` — so a panel a future plugin registers shows up on its own.
+     *
+     * Opening a panel goes through the official `ctx.layout.selectPanel(id)`;
+     * no synthetic clicks on the shell's DOM.
+     *
+     * Degradation: the slots helper package is required lazily. If it is not
+     * available, this feature stays off and every other feature is unaffected.
+     * ------------------------------------------------------------------ */
+
+    const SHELF_ID = 'muik-panels'
+    const SHELF_ATTR = 'data-muik-shelf'
+    const SHELF_ROW_ATTR = 'data-muik-shelf-row'
+
+    let slotsCoreApi = null
+    try {
+      slotsCoreApi = require('@deepseek-ai/dsh-client-ui-slots')
+    } catch (err) {
+      slotsCoreApi = null
+    }
+
+    let reactDomApi = null
+    try {
+      reactDomApi = require('react-dom')
+    } catch (err) {
+      reactDomApi = null
+    }
+
+    const SHELF_CSS = `
+[${SHELF_ATTR}="on"] > nav > *:not([${SHELF_ROW_ATTR}]):not([data-muik-keep]){display:none!important}
+button.muik-shelf-row{display:flex;align-items:center;gap:10px;box-sizing:border-box;width:100%;height:36px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-primary,inherit);font:inherit;font-size:13px;text-align:left;cursor:pointer}
+button.muik-shelf-row:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12))}
+button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#4d6bfe);outline-offset:-2px}
+.muik-shelf-glyph{flex:none;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px}
+.muik-shelf-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.muik-shelf-pop{position:fixed;z-index:2147483000;box-sizing:border-box;min-width:190px;max-height:min(60vh,420px);overflow:auto;padding:6px;border-radius:10px;background:var(--dsw-alias-bg-layer-1,#fff);border:1px solid var(--dsw-alias-border-l2,rgba(0,0,0,.12));box-shadow:0 10px 28px rgba(0,0,0,.18);color:var(--dsw-alias-label-primary,inherit)}
+.muik-shelf-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;max-height:min(58vh,420px);overflow:auto;padding:2px;overscroll-behavior:contain}
+.muik-shelf-tile{display:flex;align-items:center;gap:8px;min-width:0;height:38px;padding:0 10px;border:0;border-radius:7px;background:transparent;color:inherit;font:inherit;font-size:13px;text-align:left;cursor:pointer}
+.muik-shelf-tile:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12))}
+.muik-shelf-tile:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#4d6bfe);outline-offset:-2px}
+.muik-shelf-tileglyph{flex:none;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px}
+.muik-shelf-tile--wide{grid-column:1 / -1;margin-top:2px;border-top:1px solid var(--dsw-alias-border-l2,rgba(0,0,0,.1));border-radius:0 0 7px 7px}
+.muik-shelf-tilelabel{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.muik-shelf-fallback{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:4px;background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.16));font-size:11px;font-weight:600}
+.muik-shelf-head{display:flex;align-items:baseline;gap:8px;padding:6px 8px 7px}
+.muik-shelf-title{flex:1;min-width:0;font-size:13px;font-weight:600;letter-spacing:.01em}
+.muik-shelf-meta{flex:none;font-size:11px;color:var(--dsw-alias-label-tertiary,inherit);font-variant-numeric:tabular-nums}
+.muik-shelf-search{padding:0 4px 6px}
+.muik-shelf-search input{box-sizing:border-box;width:100%;height:32px;padding:0 10px;border-radius:7px;border:1px solid var(--dsw-alias-border-l2,rgba(0,0,0,.14));background:var(--dsw-alias-bg-layer-2,transparent);color:inherit;font:inherit;font-size:13px;outline:none}
+.muik-shelf-search input::placeholder{color:var(--dsw-alias-label-tertiary,#888)}
+.muik-shelf-hint{padding:6px 8px 4px;font-size:11px;color:var(--dsw-alias-label-tertiary,#888)}
+.muik-shelf-tile--focus{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12));outline:2px solid var(--dsw-alias-brand-primary,#4d6bfe);outline-offset:-2px}
+.muik-shelf-empty{padding:8px 10px;font-size:12px;color:var(--dsw-alias-label-secondary,inherit)}
+[${SHELF_ATTR}="on"] > button[class*="_newSession"]{height:30px!important;min-height:30px!important;max-height:30px!important}
+`
+
+    function readPanelEntries(slotsApi) {
+      if (!slotsApi || typeof slotsApi.entriesOfSlot !== 'function') return []
+      let registered = []
+      try {
+        registered = slotsApi.entriesOfSlot('sidebar.panellist') || []
+      } catch (err) {
+        return []
+      }
+      const out = []
+      const seen = new Set()
+      for (let i = 0; i < registered.length; i += 1) {
+        const entry = registered[i]
+        const options = entry && entry.options
+        const id = options && options.id
+        if (typeof id !== 'string' || id === SHELF_ID || seen.has(id)) continue
+        seen.add(id)
+        let label = id
+        try {
+          if (slotsCoreApi && typeof slotsCoreApi.resolveSlotLabel === 'function') {
+            const resolved = slotsCoreApi.resolveSlotLabel(options.label)
+            if (typeof resolved === 'string' && resolved.length > 0) label = resolved
+          } else if (typeof options.label === 'function') {
+            const resolved = options.label()
+            if (typeof resolved === 'string' && resolved.length > 0) label = resolved
+          } else if (typeof options.label === 'string') {
+            label = options.label
+          }
+        } catch (err) {
+          /* a malformed label must never hide a panel */
+        }
+        out.push({
+          id: id,
+          order: typeof options.order === 'number' ? options.order : 0,
+          label: label,
+          icon: entry.component,
+        })
+      }
+      out.sort(function (a, b) {
+        return a.order - b.order
+      })
+      return out
+    }
+
+    /** One glyph from the panel's own slot component, with a safe fallback. */
+    class GlyphBoundary extends React.Component {
+      constructor(props) {
+        super(props)
+        this.state = { failed: false }
+      }
+      static getDerivedStateFromError() {
+        return { failed: true }
+      }
+      componentDidCatch(error) {
+        console.warn('[dsh-ui-optimize] panel icon failed, using fallback', error)
+      }
+      render() {
+        return this.state.failed === true ? this.props.fallback : this.props.children
+      }
+    }
+
+    function PanelGlyph(props) {
+      const panel = props.panel || {}
+      const label = typeof panel.label === 'string' ? panel.label : ''
+      const initial = label.length > 0 ? label.trim().slice(0, 1).toUpperCase() : '?'
+      const fallback = h('span', { className: 'muik-shelf-fallback', 'aria-hidden': 'true' }, initial)
+      const icon = panel.icon
+      if (typeof icon !== 'function' && (typeof icon !== 'object' || icon === null)) return fallback
+      return h(GlyphBoundary, { fallback: fallback }, h(icon, { size: 18, active: false }))
+    }
+
+    function PanelsShelf(props) {
+      const [state, setState] = React.useState(store.state)
+      const [open, setOpen] = React.useState(false)
+      const [panels, setPanels] = React.useState(function () {
+        return readPanelEntries(props.slotsApi)
+      })
+      const [pos, setPos] = React.useState(null)
+      const [query, setQuery] = React.useState('')
+      const [focusIndex, setFocusIndex] = React.useState(-1)
+      const inputRef = React.useRef(null)
+      const tileRefs = React.useRef([])
+      const glyphRef = React.useRef(null)
+      const rowRef = React.useRef(null)
+      const popRef = React.useRef(null)
+      const toggleRef = React.useRef(null)
+      const moreRef = React.useRef(null)
+      const [hasMore, setHasMore] = React.useState(false)
+      const enabled = state.sidebar === true
+
+      const needle = query.trim().toLowerCase()
+      const filtered =
+        needle.length === 0
+          ? panels
+          : panels.filter(function (panel) {
+              return (
+                String(panel.label).toLowerCase().indexOf(needle) !== -1 ||
+                String(panel.id).toLowerCase().indexOf(needle) !== -1
+              )
+            })
+
+      React.useEffect(function () {
+        return store.subscribe(function () {
+          setState(store.state)
+        })
+      }, [])
+
+      React.useEffect(
+        function () {
+          const glyph = glyphRef.current
+          // The shell wraps every panellist entry in its own <button> and draws the
+          // label itself, so the row to mark is that wrapper — not our glyph.
+          const row = glyph && typeof glyph.closest === 'function' ? glyph.closest('button') : null
+          if (!row) return undefined
+          const nav = row.parentElement
+          const root = nav ? nav.parentElement : null
+          if (!root) return undefined
+          rowRef.current = row
+          row.setAttribute(SHELF_ROW_ATTR, '')
+          row.style.display = enabled ? '' : 'none'
+          root.setAttribute(SHELF_ATTR, enabled ? 'on' : 'off')
+
+          // The shell appends its own "More" row after the registered rows, and its
+          // menu holds content that is not a panellist entry. Hiding that row would
+          // strand it, so it is kept visible whenever the actions list has entries.
+          let keepRow = null
+          try {
+            const actions = props.slotsApi.entriesOfSlot('sidebar.panellist.actions') || []
+            if (actions.length > 0) {
+              const kids = nav.children
+              for (let i = kids.length - 1; i >= 0; i -= 1) {
+                if (kids[i] !== row) {
+                  keepRow = kids[i]
+                  // Kept visible on purpose. The shell's More menu only opens from a
+                  // trusted click: synthetic click(), full pointer sequences and a
+                  // re-shown row were each tried (0.9.13 / 0.9.23 / 0.9.24 / 0.9.25)
+                  // and none opened it, so the row keeps its own place instead of
+                  // being folded into the popover.
+                  keepRow.setAttribute('data-muik-keep', '')
+                  break
+                }
+              }
+            }
+          } catch (err) {
+            keepRow = null
+          }
+          moreRef.current = null
+          setHasMore(false)
+
+          // The row node is ours to keep only while React does not replace it, and a
+          // replaced node silently loses its listener — the shell's own handler then
+          // wins and selects a panel. Hold the latest toggle in a ref so the listener
+          // itself never needs to be re-attached, and swallow the event completely.
+          toggleRef.current = toggle
+
+          function onClick(event) {
+            if (!enabled) return
+            event.preventDefault()
+            event.stopPropagation()
+            if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation()
+            if (typeof toggleRef.current === 'function') toggleRef.current(row)
+          }
+          row.addEventListener('click', onClick, true)
+
+          /**
+           * Safety net. Hiding rows is the only destructive thing this feature does,
+           * and a bad measurement once left the whole column blank. If the column or
+           * our own row has no measurable box shortly after mounting, put everything
+           * back and leave the native sidebar alone — a degraded feature beats a
+           * missing sidebar, and it recovers without the user touching anything.
+           */
+          function verify() {
+            if (!enabled) return
+            let healthy = true
+            try {
+              const rootRect = root.getBoundingClientRect()
+              const rowRect = row.getBoundingClientRect()
+              healthy = rootRect.width > 0 && rootRect.height > 0 && rowRect.height > 0
+            } catch (err) {
+              healthy = false
+            }
+            if (!healthy) {
+              root.setAttribute(SHELF_ATTR, 'off')
+              row.removeAttribute(SHELF_ROW_ATTR)
+              row.style.display = ''
+            }
+          }
+          const verifyTimer = window.setTimeout(verify, 400)
+          window.addEventListener('resize', verify)
+
+          return function () {
+            row.removeEventListener('click', onClick, true)
+            window.clearTimeout(verifyTimer)
+            window.removeEventListener('resize', verify)
+            row.removeAttribute(SHELF_ROW_ATTR)
+            row.style.display = ''
+            if (keepRow) keepRow.removeAttribute('data-muik-keep')
+            moreRef.current = null
+            if (root.getAttribute(SHELF_ATTR) === 'on') root.setAttribute(SHELF_ATTR, 'off')
+            rowRef.current = null
+          }
+        },
+        [enabled],
+      )
+
+      React.useEffect(
+        function () {
+          if (!open) return undefined
+          function onPointerDown(event) {
+            const inPop = popRef.current && popRef.current.contains(event.target)
+            const inRow = rowRef.current && rowRef.current.contains(event.target)
+            if (!inPop && !inRow) setOpen(false)
+          }
+          function onKeyDown(event) {
+            if (event.key === 'Escape') {
+              setOpen(false)
+              return
+            }
+            if (filtered.length === 0) return
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+              event.preventDefault()
+              const step = event.key === 'ArrowDown' ? 1 : -1
+              setFocusIndex(function (prev) {
+                const next = prev + step
+                if (next < 0) return filtered.length - 1
+                if (next >= filtered.length) return 0
+                return next
+              })
+              return
+            }
+            if (event.key === 'Enter') {
+              const target = filtered[focusIndex >= 0 ? focusIndex : 0]
+              if (target) {
+                event.preventDefault()
+                pick(target.id)
+              }
+            }
+          }
+          document.addEventListener('mousedown', onPointerDown, true)
+          document.addEventListener('keydown', onKeyDown, true)
+          return function () {
+            document.removeEventListener('mousedown', onPointerDown, true)
+            document.removeEventListener('keydown', onKeyDown, true)
+          }
+        },
+        [open, filtered, focusIndex],
+      )
+
+      function toggle(row) {
+        const next = !open
+        if (next) {
+          setPanels(readPanelEntries(props.slotsApi))
+          setQuery('')
+          setFocusIndex(-1)
+          if (row) {
+            // Drop the card right under the row; alongside the rail when collapsed.
+            const rect = row.getBoundingClientRect()
+            const viewportWidth = window.innerWidth
+            const viewportHeight = window.innerHeight
+            const width = Math.min(300, viewportWidth - 24)
+            const rail = rect.width < 80
+            const preferredLeft = rail ? rect.right + 10 : rect.left
+            const left = Math.min(Math.max(preferredLeft, 12), viewportWidth - width - 12)
+            const top = Math.min(rect.bottom + 6, viewportHeight - 92)
+            setPos({
+              left: Math.round(left),
+              top: Math.round(top),
+              width: Math.round(width),
+            })
+          }
+        }
+        setOpen(next)
+      }
+
+      function pick(id) {
+        setOpen(false)
+        try {
+          props.selectPanel(id)
+        } catch (err) {
+          /* a panel that cannot be selected must not break the row */
+        }
+      }
+
+      /**
+       * Hand a "More" click to the shell's own row button.
+       *
+       * The row is parked by a static stylesheet rule at --muik-more-x/y, so it keeps
+       * a real (tiny) rect to anchor the shell's menu against while taking no space
+       * in the column. Only two custom properties on <html> are written here, then
+       * the button is clicked. No `display`, `position`, size or opacity is touched
+       * at click time: mutating layout properties on a host node the shell is about
+       * to re-render is exactly what collapsed the sidebar before.
+       */
+      function openMore() {
+        const button = moreRef.current
+        if (!button) return
+        const x = pos ? pos.left : 12
+        const y = pos ? pos.top : 120
+        try {
+          const style = document.documentElement.style
+          style.setProperty('--muik-more-x', x + 'px')
+          style.setProperty('--muik-more-y', y + 'px')
+        } catch (err) {
+          /* a missing coordinate only misplaces the menu, it never breaks the row */
+        }
+        // Click only. Replaying pointerdown/mousedown first made the shell open its
+        // menu and immediately dismiss it again (its outside-press handler fires on
+        // the bubbled mousedown). The menu itself is no longer clipped because the
+        // parked row keeps `overflow: visible`.
+        try {
+          button.click()
+        } catch (err) {
+          /* the shell refusing to open its menu must not break the popover */
+        }
+        setOpen(false)
+      }
+
+      const glyph = h(
+        'span',
+        { ref: glyphRef, className: 'muik-shelf-glyph', 'aria-hidden': 'true' },
+        h(
+          'svg',
+          { viewBox: '0 0 16 16', width: 18, height: 18, fill: 'currentColor' },
+          h('rect', { x: 1.5, y: 2.5, width: 5, height: 5, rx: 1.2 }),
+          h('rect', { x: 9.5, y: 2.5, width: 5, height: 5, rx: 1.2 }),
+          h('rect', { x: 1.5, y: 9.5, width: 5, height: 5, rx: 1.2 }),
+          h('rect', { x: 9.5, y: 9.5, width: 5, height: 5, rx: 1.2 }),
+        ),
+      )
+
+      if (!open || !pos) return glyph
+
+      const popover = h(
+        'div',
+        {
+          ref: popRef,
+          className: 'muik-shelf-pop',
+          style: {
+            left: pos.left + 'px',
+            top: pos.top + 'px',
+            width: pos.width ? pos.width + 'px' : undefined,
+          },
+        },
+        h(
+          'div',
+          { className: 'muik-shelf-head' },
+          h('span', { className: 'muik-shelf-title' }, translate('sidebar.shelf')),
+          h('span', { className: 'muik-shelf-meta' }, filtered.length + ' ' + translate('sidebar.count')),
+        ),
+        panels.length > 7
+          ? h(
+              'div',
+              { className: 'muik-shelf-search' },
+              h('input', {
+                ref: inputRef,
+                type: 'text',
+                value: query,
+                placeholder: translate('sidebar.search'),
+                autoFocus: true,
+                onChange: function (event) {
+                  setQuery(event.target.value)
+                  setFocusIndex(-1)
+                },
+              }),
+            )
+          : null,
+        filtered.length === 0
+          ? h('div', { className: 'muik-shelf-empty' }, translate('sidebar.shelfEmpty'))
+          : h(
+              'div',
+              { className: 'muik-shelf-grid' },
+              filtered.map(function (panel, index) {
+                return h(
+                  'button',
+                  {
+                    key: panel.id,
+                    ref: function (node) {
+                      tileRefs.current[index] = node
+                    },
+                    type: 'button',
+                    className:
+                      'muik-shelf-tile' + (index === focusIndex ? ' muik-shelf-tile--focus' : ''),
+                    title: panel.label,
+                    onMouseEnter: function () {
+                      setFocusIndex(index)
+                    },
+                    onClick: function () {
+                      pick(panel.id)
+                    },
+                  },
+                  h('span', { className: 'muik-shelf-tileglyph' }, h(PanelGlyph, { panel: panel })),
+                  h('span', { className: 'muik-shelf-tilelabel' }, panel.label),
+                )
+              }),
+              hasMore
+                ? h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'muik-shelf-tile muik-shelf-tile--wide',
+                      title: translate('sidebar.more'),
+                      onClick: function () {
+                        openMore()
+                      },
+                    },
+                    h('span', { className: 'muik-shelf-tilelabel' }, translate('sidebar.more')),
+                  )
+                : null,
+            ),
+        h('div', { className: 'muik-shelf-hint' }, translate('sidebar.hint')),
+      )
+
+      const portal =
+        reactDomApi && typeof reactDomApi.createPortal === 'function'
+          ? reactDomApi.createPortal(popover, document.body)
+          : popover
+
+      return h(React.Fragment, null, glyph, portal)
+    }
+
+    /* ------------------------------------------------------------------ *
      * Plugin
      * ------------------------------------------------------------------ */
 
@@ -1288,6 +1810,43 @@ body:not([data-ds-dark-theme]) .dsuik-mc > .dsuik-mc-b{display:none;}
             surface.controller = null
           }
         }, 'dsh-ui-optimize: theme layer')
+
+        /* Feature 3. Skipped entirely when the slots helper package is unavailable,
+         * so a missing optional dependency can never take the whole plugin down. */
+        if (slotsCoreApi) {
+          ctx.effect(function () {
+            const style = document.createElement('style')
+            style.setAttribute('data-dsh-ui-optimize', 'sidebar-shelf')
+            style.textContent = SHELF_CSS
+            document.head.appendChild(style)
+            return function () {
+              style.remove()
+            }
+          }, 'dsh-ui-optimize: sidebar shelf styles')
+
+          ctx.slots.inject('sidebar.panellist', function () {
+            return ctx.slots.register(
+              {
+                name: 'sidebar.panellist',
+                id: SHELF_ID,
+                order: -1000,
+                label: function () {
+                  return translate('sidebar.shelf')
+                },
+                inject: function () {
+                  return {
+                    slotsApi: ctx.slots,
+                    selectPanel: function (id) {
+                      const layout = typeof ctx.get === 'function' ? ctx.get('layout') : undefined
+                      if (layout && typeof layout.selectPanel === 'function') layout.selectPanel(id)
+                    },
+                  }
+                },
+              },
+              PanelsShelf,
+            )
+          })
+        }
 
         ctx.slots.inject('settings.section', function () {
           return ctx.slots.register(
