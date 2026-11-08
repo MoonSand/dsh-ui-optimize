@@ -4,7 +4,7 @@ English | [中文](README.zh.md)
 
 A collection of switches that tune how DeepSeek Harness looks and behaves — the whole interface, not a few named screens. Each switch works on its own, and more arrive as the shell grows.
 
-Today: a **theme gallery** of eight minimalist themes (each defining one palette for light and one for dark), and **sidebar panel folding** — the panel rows collapse into a single **Panels** entry that opens a two-column launcher.
+Today: a **theme gallery** of eight minimalist themes (each defining one palette for light and one for dark), **sidebar panel folding** — the panel rows collapse into a single **Panels** entry that opens a two-column launcher — and the **desktop Reload/Restart buttons** at the sidebar foot.
 
 Colours travel only through `ctx.theme.overrideTokens`, as a single layer of theme variables. No structural CSS is injected and no other plugin's DOM is read, so an upstream redesign can at worst make the colours inert — it cannot break the layout.
 
@@ -20,6 +20,13 @@ Open **Settings → UI Optimize**.
 
 Celadon, Linen, Cream, Graphite, Indigo, Slate, Sage, Rose. Picking a card recolours the whole interface; **Default** restores the stock look. Every theme defines one palette for light and one for dark — switching Appearance between them carries the theme along, so there is no separate version to pick.
 
+### Desktop actions
+
+Two switches control the sidebar-foot buttons:
+
+- **Reload UI** — reloads the page and client plugins only; the Host and running tasks keep going
+- **Restart app** — restarts the whole app including its Host; interrupts the current conversation. **Desktop app only** — in a browser it degrades to reloading the page
+
 ### Sidebar
 
 A switch folds the panel rows in the left rail into a single **Panels** entry. Clicking it opens a two-column launcher with the panel icons, a title and count, a search box once there are more than seven panels, and keyboard control (↑ ↓ to move, Enter to open, Esc to close). Panels that register later — including ones added by other plugins — are picked up on the next open, so nothing silently disappears from the list.
@@ -33,6 +40,8 @@ The launcher follows the pattern of the community plugin [dsh-sidebar-shelf](htt
 ## Known limitations
 
 - The theme choice lives in browser `localStorage`; it is lost with the browser profile or site data
+- Restart works only in the desktop app; a browser session can only reload
+- The restart action is a process-level operation that cannot be verified automatically
 - The **More** row is not folded; it stays in the native rail
 - The launcher keeps the shell's own panel order — it does not sort, pin or reorder
 - The **More** row is not folded; it stays in the native rail

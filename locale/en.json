@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "dsh-ui-optimize",
-    "description": "Optimizes how DeepSeek Harness looks and behaves across the whole interface, not just a few screens: the switches are meant to grow with the shell, and every one of them can be turned off on its own. Today it carries a minimalist theme gallery — Celadon, Linen, Cream, Graphite, Indigo, Slate, Sage, Rose — where each theme defines one palette for light and one for dark, follows the Appearance setting, and re-colours the interface through a single theme-token layer so an upstream redesign cannot break the layout; plus folding the sidebar panel rows into one Panels entry that opens a two-column launcher with search and keyboard control. The sidebar launcher follows the pattern of the community plugin dsh-sidebar-shelf (github.com/wumouren114/dsh-sidebar-shelf)."
+    "description": "Optimizes how DeepSeek Harness looks and behaves across the whole interface, not just a few screens: the switches are meant to grow with the shell, and every one of them can be turned off on its own. Today it carries a minimalist theme gallery — Celadon, Linen, Cream, Graphite, Indigo, Slate, Sage, Rose — where each theme defines one palette for light and one for dark, follows the Appearance setting, and re-colours the interface through a single theme-token layer so an upstream redesign cannot break the layout; plus folding the sidebar panel rows into one Panels entry that opens a two-column launcher with search and keyboard control."
   }
 }

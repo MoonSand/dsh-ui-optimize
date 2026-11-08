@@ -1,8 +1,8 @@
 {
   "name": "@moonsand/dsh-ui-optimize",
-  "version": "0.9.27",
+  "version": "0.9.28",
   "type": "module",
-  "description": "Switches that tune how DeepSeek Harness looks and behaves across the whole interface, not just a few screens — each works on its own and more arrive as the shell grows. Sidebar launcher pattern from dsh-sidebar-shelf (github.com/wumouren114/dsh-sidebar-shelf). · 调 DeepSeek Harness 整体观感与操作的开关集合，管的是整套界面而不只是某几块；每个开关独立生效，随宿主能力增长继续增加。侧栏启动面板的做法参考 dsh-sidebar-shelf（github.com/wumouren114/dsh-sidebar-shelf）。",
+  "description": "Switches that tune how DeepSeek Harness looks and behaves across the whole interface, not just a few screens — each works on its own and more arrive as the shell grows. · 调 DeepSeek Harness 整体观感与操作的开关集合，管的是整套界面而不只是某几块；每个开关独立生效，随宿主能力增长继续增加。",
   "license": "MIT",
   "author": "MoonSand",
   "publishConfig": {

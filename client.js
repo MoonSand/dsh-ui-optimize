@@ -65,6 +65,7 @@ window.__ModuleLoader__.load({
         'sidebar.more': 'More',
         'sidebar.switch': 'Fold the sidebar menu into one Panels entry',
         'sidebar.switchHint': 'The menu rows collapse into a single launcher that lists every panel; panels a future plugin registers show up on their own. Also makes the New Session button shorter',
+        'sidebar.unavailable': 'This build does not expose the slot API the launcher needs, so folding stays off.',
         'desktop.label': 'Restart app',
         'desktop.hint': 'Restart DeepSeek Harness (app and Host)',
         'desktop.refresh': 'Reload UI',
@@ -121,6 +122,7 @@ window.__ModuleLoader__.load({
         'sidebar.more': '更多',
         'sidebar.switch': '把侧栏菜单收进「面板」',
         'sidebar.switchHint': '菜单行合并成一个入口，点开列出全部面板；新插件注册的面板会自动出现。同时把「新会话」按钮压低一点',
+        'sidebar.unavailable': '当前版本取不到槽位接口，收纳功能用不了，所以保持关闭。',
         'desktop.label': '重启应用',
         'desktop.hint': '重启 DeepSeek Harness（应用与 Host）',
         'desktop.refresh': '刷新界面',
@@ -448,14 +450,63 @@ window.__ModuleLoader__.load({
       }
     }
 
+    /* Which shell this page is running in, and therefore what it can actually do.
+     *
+     * A feature is only offered when the current environment can honour it: the
+     * desktop app can restart its own process, a browser session cannot. The rule
+     * lives in one table so a new feature declares its requirement instead of
+     * each switch inventing its own check. */
+    const FEATURES = {
+      theme: { envs: ['desktop', 'web'] },
+      reload: { envs: ['desktop', 'web'] },
+      restart: { envs: ['desktop'], reason: 'desktop.restartNotDesktop' },
+      sidebar: { envs: ['desktop', 'web'], reason: 'sidebar.unavailable' },
+    }
+
+    /* The single answer to "can this shell run this feature". Callers render the
+     * switch greyed out and print `reason` when `available` is false.
+     *
+     * `unknown` means the probe has not answered yet (or its route is missing);
+     * features stay usable then, because a transient network failure must not
+     * disable a working feature. */
+    function featureGate(name, env) {
+      const spec = FEATURES[name]
+      if (!spec) return { available: true, reason: '' }
+      if (env !== 'desktop' && env !== 'web') return { available: true, reason: '' }
+      if (spec.envs.indexOf(env) === -1) {
+        return { available: false, reason: translate(spec.reason) }
+      }
+      return { available: true, reason: '' }
+    }
+
     const store = {
       state: normalize(readStored()),
+      /* Describes the running process, not a preference — never persisted. */
+      env: 'unknown',
       listeners: new Set(),
       subscribe(listener) {
         store.listeners.add(listener)
         return function () {
           store.listeners.delete(listener)
         }
+      },
+      notify() {
+        /* Fresh identity so subscribers that store the state object re-render. */
+        store.state = Object.assign({}, store.state)
+        const snapshot = Array.from(store.listeners)
+        for (let i = 0; i < snapshot.length; i += 1) {
+          try {
+            snapshot[i]()
+          } catch (err) {
+            /* a broken subscriber must not block the others */
+          }
+        }
+      },
+      setEnv(value) {
+        if (value !== 'desktop' && value !== 'web') return
+        if (store.env === value) return
+        store.env = value
+        store.notify()
       },
       setTheme(key) {
         publish(
@@ -466,6 +517,9 @@ window.__ModuleLoader__.load({
         )
       },
       setFlag(name, value) {
+        /* Hard gate: a feature this shell cannot run never turns on, even when
+         * something other than the switch calls this directly. */
+        if (value === true && !featureGate(name, store.env).available) return
         const next = Object.assign({}, store.state, { version: 3 })
         next[name] = value === true
         publish(next)
@@ -625,6 +679,8 @@ body:not([data-ds-dark-theme]) .dsuik-mc > .dsuik-mc-b{display:none;}
           role: 'switch',
           'aria-checked': props.checked ? 'true' : 'false',
           'aria-label': props.label,
+          'aria-disabled': disabled ? 'true' : 'false',
+          title: disabled && props.title ? props.title : props.hint || props.label,
           disabled: disabled,
           className:
             'dsuik-switch' + (props.checked ? ' is-on' : '') + (disabled ? ' is-disabled' : ''),
@@ -664,8 +720,14 @@ body:not([data-ds-dark-theme]) .dsuik-mc > .dsuik-mc-b{display:none;}
 
     function SettingsPage() {
       const [state, setState] = React.useState(store.state)
-      const [restartUnavailable, setRestartUnavailable] = React.useState(false)
       const [legacyPresent, setLegacyPresent] = React.useState(false)
+      const env = store.env
+      const restartGate = featureGate('restart', env)
+      /* The shelf also needs the slot API: without it the switch stays off and
+       * says why, instead of offering something that cannot work. */
+      const sidebarGate = slotsCoreApi
+        ? featureGate('sidebar', env)
+        : { available: false, reason: translate('sidebar.unavailable') }
 
       React.useEffect(function () {
         return store.subscribe(function () {
@@ -673,21 +735,22 @@ body:not([data-ds-dark-theme]) .dsuik-mc > .dsuik-mc-b{display:none;}
         })
       }, [])
 
-      /* Ask the Host once whether this page is the desktop shell. A browser session
-       * cannot restart anything, so the switch should say so up front instead of
-       * leaving the user to discover it on the first click. */
+      /* The probe runs at plugin start; if it failed there (a transient network
+       * error), retry once when the settings page opens — but never override a
+       * known answer. */
       React.useEffect(function () {
+        if (env !== 'unknown') return undefined
         let alive = true
         void readStatus().then(function (status) {
           if (!alive) return
           if (status && typeof status.desktop === 'boolean') {
-            setRestartUnavailable(status.desktop !== true)
+            store.setEnv(status.desktop === true ? 'desktop' : 'web')
           }
         })
         return function () {
           alive = false
         }
-      }, [])
+      }, [env])
 
       /* The standalone plugin owns the original route prefix. If it is still
        * loaded, both plugins draw footer buttons — say so instead of leaving the
@@ -791,15 +854,16 @@ body:not([data-ds-dark-theme]) .dsuik-mc > .dsuik-mc-b{display:none;}
               h('span', { className: 'dsuik-rowname' }, translate('desktop.restartSwitch')),
               h(
                 'span',
-                { className: 'dsuik-rowhint' + (restartUnavailable ? ' is-warn' : '') },
-                restartUnavailable
-                  ? translate('desktop.restartNotDesktop')
-                  : translate('desktop.restartSwitchHint'),
+                { className: 'dsuik-rowhint' + (restartGate.available ? '' : ' is-warn') },
+                restartGate.available
+                  ? translate('desktop.restartSwitchHint')
+                  : restartGate.reason,
               ),
             ),
             h(Switch, {
               checked: state.restart === true,
-              disabled: restartUnavailable,
+              disabled: !restartGate.available,
+              title: restartGate.reason,
               label: translate('desktop.restartSwitch'),
               onChange: function (next) {
                 store.setFlag('restart', next)
@@ -818,11 +882,18 @@ body:not([data-ds-dark-theme]) .dsuik-mc > .dsuik-mc-b{display:none;}
               'div',
               { className: 'dsuik-rowtext' },
               h('span', { className: 'dsuik-rowname' }, translate('sidebar.switch')),
-              h('span', { className: 'dsuik-rowhint' }, translate('sidebar.switchHint')),
+              h(
+                'span',
+                { className: 'dsuik-rowhint' + (sidebarGate.available ? '' : ' is-warn') },
+                sidebarGate.available
+                  ? translate('sidebar.switchHint')
+                  : sidebarGate.reason,
+              ),
             ),
             h(Switch, {
               checked: state.sidebar === true,
-              disabled: !slotsCoreApi,
+              disabled: !sidebarGate.available,
+              title: sidebarGate.reason,
               label: translate('sidebar.switch'),
               onChange: function (next) {
                 store.setFlag('sidebar', next)
@@ -1151,6 +1222,7 @@ body:not([data-ds-dark-theme]) .dsuik-mc > .dsuik-mc-b{display:none;}
       }
 
       function onClick() {
+        if (props.unavailable === true) return
         if (phase === 'restarting') return
         if (phase === 'confirm') {
           void restart()
@@ -1183,9 +1255,14 @@ body:not([data-ds-dark-theme]) .dsuik-mc > .dsuik-mc-b{display:none;}
           type: 'button',
           className: 'dsuik-dsr-btn',
           'data-phase': phase,
-          disabled: phase === 'restarting',
+          disabled: phase === 'restarting' || props.unavailable === true,
           'aria-label': translate('desktop.label'),
-          title: note === '' ? translate('desktop.hint') : note,
+          title:
+            props.unavailable === true
+              ? props.reason || translate('desktop.restartNotDesktop')
+              : note === ''
+                ? translate('desktop.hint')
+                : note,
           onClick: onClick,
           onKeyDown: onKeyDown,
         },
@@ -1230,12 +1307,19 @@ body:not([data-ds-dark-theme]) .dsuik-mc > .dsuik-mc-b{display:none;}
       const wide = props.wide !== false
       const showReload = state.reload === true
       const showRestart = state.restart === true
+      const restartGate = featureGate('restart', store.env)
       if (!showReload && !showRestart) return null
       return h(
         'div',
         { className: 'dsuik-dsr-group' },
         showReload ? h(RefreshButton, { wide: wide }) : null,
-        showRestart ? h(RestartButton, { wide: wide }) : null,
+        showRestart
+          ? h(RestartButton, {
+              wide: wide,
+              unavailable: !restartGate.available,
+              reason: restartGate.reason,
+            })
+          : null,
       )
     }
 
@@ -1745,6 +1829,23 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
         } catch (err) {
           /* keep the built-in dictionary */
         }
+
+        /* Detect the shell once, before anything is drawn: a desktop app can
+         * restart its own process, a browser session cannot. Switches read this
+         * from the store, so the first render already greys out what this
+         * environment cannot do and prints the reason next to it. */
+        ctx.effect(function () {
+          let alive = true
+          void readStatus().then(function (status) {
+            if (!alive) return
+            if (status && typeof status.desktop === 'boolean') {
+              store.setEnv(status.desktop === true ? 'desktop' : 'web')
+            }
+          })
+          return function () {
+            alive = false
+          }
+        })
 
         /* The client tree may still be composing when this plugin mounts, so the
          * theme service can be unreachable on the first attempt. Retry briefly
