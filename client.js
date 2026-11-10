@@ -88,6 +88,53 @@ window.__ModuleLoader__.load({
         'desktop.reloadNotDesktop': 'This is a browser session, so the reload button is not offered — this shell already has its own refresh entry. The switch works only inside the desktop app.',
         'legacy.title': '@moonsand/dsh-desktop-restart is still installed',
         'legacy.body': 'Both plugins draw reload/restart buttons, so the sidebar foot will show two sets. Uninstall dsh-desktop-restart under Settings → Plugins and keep only this one.',
+        'updates.tab': 'Updates',
+        'updates.title': 'Plugin updates',
+        'updates.sub': 'One click updates every installed plugin whose newest release is at least a day old. Anything younger is skipped — a release published hours ago can still be withdrawn or patched.',
+        'section.updates': 'Updates',
+        'updates.switch': 'Updates tab',
+        'updates.switchHint': 'Adds an Updates tab (one-click update plus a count badge) to the plugin page. Turning it off stops every update check this plugin makes.',
+        'updates.fallbackSwitch': 'Fall back to the previous release',
+        'updates.fallbackSwitchHint': 'When the newest release is less than a day old, install the newest one that already is, instead of waiting.',
+        'updates.fallbackTag': 'previous release',
+        'updates.off': 'Updates are turned off',
+        'updates.offHint': 'Turn on “Updates tab” under Settings → UI Optimize to bring it back.',
+        'updates.check': 'Check again',
+        'updates.checking': 'Checking…',
+        'updates.loadingDetail': 'Reading the installed plugins and their publish dates…',
+        'updates.notesLoading': 'Loading the release notes…',
+        'updates.notesEmpty': 'No release notes for this version.',
+        'updates.notesRate': 'GitHub is rate-limiting anonymous requests. Try again in a few minutes.',
+        'updates.notesFailed': 'Could not load the release notes.',
+        'updates.notesToggle': 'Show or hide the release notes',
+        'updates.notesNoZh': 'No Chinese release notes for these versions.',
+        'updates.notesNoZhVersion': 'No Chinese notes for this version.',
+        'updates.notesSpan': 'Changes since {from}',
+        'updates.updateAll': 'Update all',
+        'updates.updating': 'Updating…',
+        'updates.none': 'Nothing to update.',
+        'updates.upToDate': '{n} already up to date',
+        'updates.fallbackWhy': 'The latest release is under 24 hours old, so this installs the newest release that is already old enough.',
+        'updates.latestSoon': '{hours}h left',
+        'updates.idle': 'Not checked yet.',
+        'updates.unsupported': 'This host exposes no plugin manager, so updates cannot be checked here. Installed plugins still work.',
+        'updates.registryDown': 'The npm registry did not answer, so the release dates are unknown. Public plugins stay listed as unchecked.',
+        'updates.pmTimeout': 'The host plugin manager did not answer within {ms}s (remote={remote}).',
+        'updates.pmWaiting': 'Waiting for the host plugin manager… (remote={remote})',
+        'updates.pmStalled': 'Listing the installed plugins never answered (8s). Namespaces seen: {names}',
+        'updates.loadFailed': 'The check failed',
+        'updates.waiting': 'Published under a day ago — skipped until it is 24 hours old',
+        'updates.unknownAge': 'Publish time could not be read — skipped, since the 24-hour rule cannot be confirmed',
+        'updates.readingAge': 'Reading the publish time…',
+        'updates.section.ready': 'Ready to update',
+        'updates.section.waiting': 'Not yet',
+        'updates.section.waitingHint': 'Published less than 24 hours ago.',
+        'updates.queued': 'Queued',
+        'updates.running': 'Updating',
+        'updates.succeeded': 'Updated',
+        'updates.failed': 'Failed',
+        'updates.checked': 'installed plugins checked',
+        'updates.reloadHint': 'Reload the page after a plugin update — the new client half only loads on a fresh page.',
         storageNote: 'Storage unavailable — the choice lasts until this page reloads.',
       },
       zh: {
@@ -146,6 +193,53 @@ window.__ModuleLoader__.load({
         'desktop.reloadNotDesktop': '当前是网页端，刷新按钮不提供——这个外壳已经自带刷新入口。此开关仅在桌面应用里可开。',
         'legacy.title': '检测到 @moonsand/dsh-desktop-restart 仍在安装',
         'legacy.body': '两个插件都会提供刷新/重启按钮，侧栏底部会出现两套。请到「设置 → 插件」卸载 dsh-desktop-restart，只保留本插件。',
+        'updates.tab': '更新',
+        'updates.title': '插件更新',
+        'updates.sub': '一键更新所有「最新版发布满 24 小时」的已装插件；更年轻的版本先跳过——刚发几小时的版本还可能被撤回或补丁。',
+        'section.updates': '更新',
+        'updates.switch': '「更新」页签',
+        'updates.switchHint': '在插件页加一个「更新」页签（一键更新 + 数量徽章）。关掉后本插件不再做任何更新检查。',
+        'updates.fallbackSwitch': '退回次新版',
+        'updates.fallbackSwitchHint': '最新版发布不足 24 小时时，改装「已经满一天的最新版本」，而不是干等。',
+        'updates.fallbackTag': '次新版',
+        'updates.off': '更新功能已关闭',
+        'updates.offHint': '到「设置 → 界面优化」打开「更新页签」即可恢复。',
+        'updates.check': '重新检查',
+        'updates.checking': '检查中…',
+        'updates.loadingDetail': '正在读取已装插件和它们的发布时间…',
+        'updates.notesLoading': '正在读取更新说明…',
+        'updates.notesEmpty': '这个版本没有更新说明。',
+        'updates.notesRate': 'GitHub 的匿名请求被限流了，过几分钟再试。',
+        'updates.notesFailed': '更新说明读取失败。',
+        'updates.notesToggle': '展开或收起更新说明',
+        'updates.notesNoZh': '这些版本没有中文更新说明。',
+        'updates.notesNoZhVersion': '该版本没有中文说明。',
+        'updates.notesSpan': '自 {from} 以来的改动',
+        'updates.updateAll': '一键更新',
+        'updates.updating': '更新中…',
+        'updates.none': '没有可更新的插件。',
+        'updates.upToDate': '其余 {n} 个已是最新版',
+        'updates.fallbackWhy': '最新版发布不足 24 小时，这一版装的是已满 24 小时的最新版本。',
+        'updates.latestSoon': '剩余 {hours} 小时',
+        'updates.idle': '还没检查。',
+        'updates.unsupported': '这台宿主没有可用的插件管理服务，所以这里查不了更新（已装插件不受影响）。',
+        'updates.registryDown': 'npm registry 没有回应，读不到发布时间。公开插件暂时按「未检查」处理。',
+        'updates.pmTimeout': '宿主的插件管理服务 {ms} 秒没有响应（remote={remote}）。',
+        'updates.pmWaiting': '正在等宿主插件管理服务应答…（remote={remote}）',
+        'updates.pmStalled': '读取已装插件 8 秒没有回应（看到的命名空间：{names}）',
+        'updates.loadFailed': '检查失败',
+        'updates.waiting': '发布不足 24 小时 —— 等满一天再更新',
+        'updates.unknownAge': '读不到发布时间 —— 无法确认是否满 24 小时，先跳过',
+        'updates.readingAge': '正在读取发布时间…',
+        'updates.section.ready': '可更新',
+        'updates.section.waiting': '暂不可更新',
+        'updates.section.waitingHint': '发布不足 24 小时',
+        'updates.queued': '排队中',
+        'updates.running': '更新中',
+        'updates.succeeded': '已更新',
+        'updates.failed': '失败',
+        'updates.checked': '个已装插件已检查',
+        'updates.reloadHint': '插件更新完成后刷新页面，新的客户端代码才会加载。',
         storageNote: '浏览器存储不可用——选择的主题只在本次页面加载内有效。',
       },
     }
@@ -403,7 +497,7 @@ window.__ModuleLoader__.load({
      * ------------------------------------------------------------------ */
 
     function defaultState() {
-      return { version: 4, theme: null, reload: true, restart: true, sidebar: false }
+      return { version: 5, theme: null, reload: true, restart: true, sidebar: false, updates: true, updatesFallback: false }
     }
 
     function normalize(stored) {
@@ -415,6 +509,8 @@ window.__ModuleLoader__.load({
       if (typeof stored.reload === 'boolean') out.reload = stored.reload
       if (typeof stored.restart === 'boolean') out.restart = stored.restart
       if (typeof stored.sidebar === 'boolean') out.sidebar = stored.sidebar
+      if (typeof stored.updates === 'boolean') out.updates = stored.updates
+      if (typeof stored.updatesFallback === 'boolean') out.updatesFallback = stored.updatesFallback
       return out
     }
 
@@ -924,6 +1020,49 @@ body:not([data-ds-dark-theme]) .dsuik-mc > .dsuik-mc-b{display:none;}
               label: translate('sidebar.switch'),
               onChange: function (next) {
                 store.setFlag('sidebar', next)
+              },
+            }),
+          ),
+        ),
+        h(
+          'div',
+          { className: 'dsuik-section' },
+          h('p', { className: 'dsuik-sectiontitle' }, translate('section.updates')),
+          h(
+            'div',
+            { className: 'dsuik-row' },
+            h(
+              'div',
+              { className: 'dsuik-rowtext' },
+              h('span', { className: 'dsuik-rowname' }, translate('updates.switch')),
+              h('span', { className: 'dsuik-rowhint' }, translate('updates.switchHint')),
+            ),
+            h(Switch, {
+              checked: state.updates !== false,
+              label: translate('updates.switch'),
+              onChange: function (next) {
+                store.setFlag('updates', next)
+                if (!next) updateBadge.set(0)
+                else refreshUpdateBadge()
+              },
+            }),
+          ),
+          h(
+            'div',
+            { className: 'dsuik-row' },
+            h(
+              'div',
+              { className: 'dsuik-rowtext' },
+              h('span', { className: 'dsuik-rowname' }, translate('updates.fallbackSwitch')),
+              h('span', { className: 'dsuik-rowhint' }, translate('updates.fallbackSwitchHint')),
+            ),
+            h(Switch, {
+              checked: state.updatesFallback === true,
+              disabled: state.updates === false,
+              label: translate('updates.fallbackSwitch'),
+              onChange: function (next) {
+                store.setFlag('updatesFallback', next)
+                if (state.updates !== false) refreshUpdateBadge()
               },
             }),
           ),
@@ -1736,8 +1875,13 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
       function openMore() {
         const button = moreRef.current
         if (!button) return
-        const x = pos ? pos.left : 12
-        const y = pos ? pos.top : 120
+        /* Measure the row right now. The cached `pos` is computed when the card
+         * opens and goes stale as soon as the sidebar re-lays out (collapse,
+         * resize, a panel switching tabs) — which parked the shell menu in the
+         * corner, outside the panel, until a reload. */
+        const rect = button.getBoundingClientRect()
+        const x = rect.width > 0 ? rect.left : (pos ? pos.left : 12)
+        const y = rect.width > 0 ? rect.bottom : (pos ? pos.top : 120)
         try {
           const style = document.documentElement.style
           style.setProperty('--muik-more-x', x + 'px')
@@ -1865,7 +2009,9 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
      * ------------------------------------------------------------------ */
 
     return {
-      inject: ['slots'],
+      /* `remote` is the Host's plugin-manager bridge; cordis refuses to hand out
+       * `ctx.remote` at all unless the plugin declares it here first. */
+      inject: ['slots', 'remote', 'remote.pluginManager'],
       apply(ctx) {
         try {
           const locale = typeof ctx.get === 'function' ? ctx.get('locale') : undefined
@@ -2001,6 +2147,1062 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
             )
           })
         }
+
+        /* ------------------------------------------------------------------ *
+         * Updates tab
+         *
+         * The official plugin page exposes exactly one slot we can use without
+         * touching its DOM: `plugins.tab`. Everything in it talks to the market's
+         * public update API (v1) rather than driving pnpm ourselves, so the market
+         * keeps ownership of installs, rollbacks and its fresh-release wait — and
+         * a host without that market simply reports that it cannot check here.
+         * ------------------------------------------------------------------ */
+
+        const FRESH_RELEASE_MS = 24 * 60 * 60 * 1000
+        const UPDATE_REGISTRY = 'https://registry.npmjs.org/'
+
+        /* Everything this tab needs comes from two sources that exist on every
+         * host: the Host's own plugin manager (what is installed) and the npm
+         * registry (what exists and how old it is). No marketplace plugin is
+         * involved, so it keeps working when dshmarket is absent. */
+        function pluginManager() {
+          const remote = ctx.remote || (typeof ctx.get === 'function' ? ctx.get('remote') : null)
+          const pm = remote && remote.pluginManager
+          return pm && typeof pm.listBundles === 'function' ? pm : null
+        }
+
+        /* Which remote namespaces the page actually got. Printed in the failure
+         * text so a missing or renamed namespace is visible without DevTools. */
+        function remoteNamespaces() {
+          try {
+            const remote = ctx.remote || (typeof ctx.get === 'function' ? ctx.get('remote') : null)
+            if (!remote) return 'none'
+            const keys = Object.keys(remote)
+            if (keys.length === 0) return 'empty'
+            return keys.slice(0, 10).join('|')
+          } catch (err) {
+            return 'error'
+          }
+        }
+
+        function withTimeout(promise, ms) {
+          return new Promise(function (resolve) {
+            const timer = setTimeout(function () {
+              resolve({ timedOut: true })
+            }, ms)
+            Promise.resolve(promise).then(
+              function (value) {
+                clearTimeout(timer)
+                resolve({ timedOut: false, value: value })
+              },
+              function (error) {
+                clearTimeout(timer)
+                resolve({ timedOut: false, error: error })
+              }
+            )
+          })
+        }
+
+        function failureMessage(error) {
+          if (!error) return ''
+          if (typeof error === 'string') return error
+          return String(error.message || error.code || error.kind || '')
+        }
+
+        /* The market tells us which releases are due; only the registry can tell us
+         * how old the newest one is, and the age is the user's actual rule here. */
+        /* "Second newest" for the fallback switch: the highest release at or below
+         * `version` that is already past the 24-hour rule. */
+        function previousMatureVersion(time, version) {
+          if (!time || typeof time !== 'object') return null
+          const names = Object.keys(time)
+          let best = null
+          for (let i = 0; i < names.length; i += 1) {
+            const name = names[i]
+            if (name === 'created' || name === 'modified' || !time[name]) continue
+            if (compareVersions(name, version) >= 0) continue
+            const stamp = Date.parse(time[name])
+            if (!Number.isFinite(stamp)) continue
+            const age = Date.now() - stamp
+            if (age < FRESH_RELEASE_MS) continue
+            if (best === null || compareVersions(name, best.version) > 0) best = { version: name, age: age }
+          }
+          return best
+        }
+
+        const REGISTRY_TIMEOUT_MS = 8000
+        const REGISTRY_CONCURRENCY = 4
+
+        async function readRegistry(name) {
+          const controller = typeof AbortController === 'function' ? new AbortController() : null
+          const timer = controller
+            ? setTimeout(function () {
+                controller.abort()
+              }, REGISTRY_TIMEOUT_MS)
+            : null
+          try {
+            const path = encodeURIComponent(name).replace(/^%40/, '@')
+            const res = await fetch(UPDATE_REGISTRY + path, {
+              /* The abbreviated (install-v1) document has no `time` table at all,
+               * so asking for it first meant every package looked undated. */
+              headers: { accept: 'application/json' },
+              signal: controller ? controller.signal : undefined,
+            })
+            if (!res.ok) return null
+            const doc = await res.json()
+            const time = (doc && doc.time) || {}
+            const tags = (doc && doc['dist-tags']) || {}
+            return {
+              latest: typeof tags.latest === 'string' ? tags.latest : '',
+              time: time,
+              repo: readRepo(doc),
+            }
+          } catch (err) {
+            return null
+          } finally {
+            if (timer) clearTimeout(timer)
+          }
+        }
+
+        /* Whether the running DSH version accepts this exact release. The Host
+         * answers authoritatively: `listVersions` marks a version `incompatible`
+         * when its `engines.dsh` (or a DSH peer) rejects the running build, and
+         * it already honours `compatibility.json` exemptions. */
+        async function readCompat(pm, name, version) {
+          try {
+            const answer = await withTimeout(pm.listVersions(name), 8000)
+            if (!answer || answer.timedOut || answer.error !== undefined) return null
+            const result = answer.value
+            if (!result || result.ok !== true) return null
+            const value = result.value
+            if (!value || value.status !== 'listed' || !Array.isArray(value.versions)) return null
+            const hit = value.versions.find(function (entry) {
+              return entry && entry.version === version
+            })
+            if (!hit || !hit.incompatible) return null
+            const requirements = hit.incompatible.requirements || {}
+            const listed = Object.keys(requirements).map(function (key) {
+              return key + ' ' + requirements[key]
+            })
+            return {
+              runtime: hit.incompatible.runtimeVersion || '',
+              required: requirements['engines.dsh'] || listed.join(', '),
+            }
+          } catch (err) {
+            return null
+          }
+        }
+
+        /* One scan, one truth: which installed plugins have a newer release, how
+         * old that release is, and what the fallback would be. The list, the
+         * section split, the count and the badge all derive from this. */
+        async function collectUpdates(onRow) {
+          const pm = pluginManager()
+          if (!pm) return { supported: false, checked: 0, rows: [] }
+          let listed = null
+          const answer = await withTimeout(pm.listBundles(), 8000)
+          if (answer.timedOut) {
+            return { supported: false, checked: 0, rows: [], stalled: 'listBundles', names: remoteNamespaces() }
+          }
+          if (answer.error !== undefined) return { supported: false, checked: 0, rows: [] }
+          listed = answer.value
+          if (!listed || listed.ok !== true) return { supported: false, checked: 0, rows: [] }
+          const installed = (listed.value || []).filter(function (item) {
+            return item && item.installed === true
+          })
+          /* `updatable` is the Host's own verdict: a registry dependency saved
+           * under its own name with a semver version. Links and local paths are
+           * excluded for us — updating those would overwrite the checkout. */
+          const candidates = installed.filter(function (item) {
+            return item.updatable === true && typeof item.version === 'string' && item.version !== ''
+          })
+          const found = []
+          const stats = { tried: 0, failed: 0 }
+          let cursor = 0
+          /* Four at a time: the public registry throttles a burst of thirty, and
+           * one stalled request used to hold the whole panel in "loading". */
+          async function worker() {
+            while (cursor < candidates.length) {
+              const item = candidates[cursor]
+              cursor += 1
+              stats.tried += 1
+              const doc = await readRegistry(item.name)
+              if (!doc || !doc.latest) {
+                stats.failed += 1
+                continue
+              }
+              if (compareVersions(doc.latest, item.version) <= 0) continue
+              const published = doc.time[doc.latest]
+              const stamp = published === undefined ? NaN : Date.parse(published)
+              const age = Number.isFinite(stamp) ? Date.now() - stamp : null
+              const fallback = previousMatureVersion(doc.time, doc.latest)
+              const compat = await readCompat(pm, item.name, doc.latest)
+              const row = {
+                compat: compat,
+                name: item.name,
+                installed: item.version,
+                latest: doc.latest,
+                age: age,
+                repo: doc.repo,
+                fallbackVersion: fallback ? fallback.version : '',
+                fallbackAge: fallback ? fallback.age : null,
+                state: 'idle',
+                percent: 0,
+                detail: '',
+              }
+              found.push(row)
+              if (typeof onRow === 'function') onRow(row)
+            }
+          }
+          const lanes = []
+          for (let i = 0; i < Math.min(REGISTRY_CONCURRENCY, candidates.length); i += 1) lanes.push(worker())
+          await Promise.all(lanes)
+          found.sort(function (a, b) {
+            return a.name.localeCompare(b.name)
+          })
+          return { supported: true, checked: installed.length, rows: found, stats: stats }
+        }
+
+        /* The packument's repository field is the only place that knows where the
+         * changelog lives, so it travels with the age read. */
+        function readRepo(doc) {
+          const raw = doc && (doc.repository && (doc.repository.url || doc.repository))
+          if (typeof raw !== 'string') return ''
+          const hit = raw.match(/github\.com[:/]+([^/]+)\/([^/#?]+)/i)
+          if (!hit) return ''
+          return hit[1] + '/' + hit[2].replace(/\.git$/i, '')
+        }
+
+        /* Panels remount on every tab switch, so the parsed notes survive in a
+         * module-level map: the second open is instant, not another 2-3s round trip. */
+        const changelogCache = new Map()
+
+        /* Loose semver compare: enough to tell 1.10.0 from 1.9.4 and to bound the
+         * range of versions a single click should explain. */
+        function versionParts(text) {
+          return String(text || '')
+            .replace(/^v/i, '')
+            .split(/[.\-+]/)
+            .map(function (piece) {
+              const n = parseInt(piece, 10)
+              return Number.isFinite(n) ? n : 0
+            })
+        }
+
+        function compareVersions(a, b) {
+          const left = versionParts(a)
+          const right = versionParts(b)
+          const size = Math.max(left.length, right.length)
+          for (let i = 0; i < size; i += 1) {
+            const diff = (left[i] || 0) - (right[i] || 0)
+            if (diff !== 0) return diff > 0 ? 1 : -1
+          }
+          return 0
+        }
+
+        /* Cross-version updates deserve cross-version notes, so the whole release
+         * list is read once and then narrowed to (installed, latest]. */
+        async function readChangelog(repo, upperBound, installed) {
+          if (!repo) return { state: 'empty' }
+          const cacheKey = repo + '|' + String(installed || '') + '|' + String(upperBound || '')
+          if (changelogCache.has(cacheKey)) return changelogCache.get(cacheKey)
+          const base = 'https://api.github.com/repos/' + repo
+          let res
+          try {
+            res = await fetch(base + '/releases?per_page=60', {
+              headers: { accept: 'application/vnd.github+json' },
+            })
+          } catch (err) {
+            return { state: 'failed' }
+          }
+          if (res.status === 403) return { state: 'rate' }
+          if (!res.ok) return { state: 'failed' }
+          const list = await res.json().catch(function () {
+            return null
+          })
+          if (!Array.isArray(list)) return { state: 'failed' }
+
+          const releases = list
+            .filter(function (item) {
+              return item && !item.draft && typeof item.body === 'string' && item.body.trim() !== ''
+            })
+            .map(function (item) {
+              return {
+                version: String(item.tag_name || item.name || '').replace(/^v/i, ''),
+                body: String(item.body || ''),
+              }
+            })
+            .filter(function (item) {
+              return item.version !== ''
+            })
+            .sort(function (a, b) {
+              return compareVersions(b.version, a.version)
+            })
+
+          const upper = String(upperBound || '')
+          const lower = String(installed || '')
+          let picked = releases.filter(function (item) {
+            if (compareVersions(item.version, upper) > 0) return false
+            if (lower && compareVersions(item.version, lower) <= 0) return false
+            return true
+          })
+          if (picked.length === 0) {
+            picked = releases.filter(function (item) {
+              return compareVersions(item.version, upper) === 0
+            })
+          }
+          /* A long gap could mean twenty releases; the newest eight is plenty. */
+          const result = picked.length === 0
+            ? { state: 'empty' }
+            : { state: 'ready', groups: picked.slice(0, 8).map(function (item) { return item }) }
+          changelogCache.set(cacheKey, result)
+          return result
+        }
+
+        /* The notes are shown in Chinese, so drop the blocks that carry no CJK at
+         * all and keep everything else in its original order. */
+        function chineseBlocks(text) {
+          const cjk = /[\u3400-\u9fff\u3000-\u303f\uff00-\uffef]/
+          return String(text || '')
+            .split(/\r?\n/)
+            .filter(function (line) {
+              return cjk.test(line)
+            })
+        }
+
+        /* A deliberately tiny Markdown reader: headings, list items, bold, inline
+         * code and links — enough for release notes, small enough to stay here. */
+        function renderInline(text, keyPrefix) {
+          const out = []
+          const pattern = /(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^)]+\))/g
+          let cursor = 0
+          let match = pattern.exec(text)
+          let index = 0
+          while (match) {
+            if (match.index > cursor) out.push(text.slice(cursor, match.index))
+            const token = match[0]
+            index += 1
+            if (token.startsWith('**')) {
+              out.push(h('strong', { key: keyPrefix + '-b' + String(index) }, token.slice(2, -2)))
+            } else if (token.startsWith('`')) {
+              out.push(h('code', { key: keyPrefix + '-c' + String(index) }, token.slice(1, -1)))
+            } else {
+              const label = token.slice(1, token.indexOf(']'))
+              out.push(h('span', { key: keyPrefix + '-l' + String(index), className: 'dsuik-up-link' }, label))
+            }
+            cursor = match.index + token.length
+            match = pattern.exec(text)
+          }
+          if (cursor < text.length) out.push(text.slice(cursor))
+          return out
+        }
+
+        function renderNotes(text, keyPrefix) {
+          const lines = chineseBlocks(text)
+          const nodes = []
+          lines.forEach(function (line, index) {
+            const trimmed = line.trim()
+            if (trimmed === '') return
+            const key = keyPrefix + '-' + String(index)
+            const heading = trimmed.match(/^#{1,6}\s+(.*)$/)
+            const bullet = trimmed.match(/^[-*+]\s+(.*)$/)
+            const ordered = trimmed.match(/^\d+[.)]\s+(.*)$/)
+            if (heading) {
+              nodes.push(h('p', { key: key, className: 'dsuik-up-h' }, renderInline(heading[1], key)))
+            } else if (bullet) {
+              nodes.push(h('p', { key: key, className: 'dsuik-up-li' }, '· ', renderInline(bullet[1], key)))
+            } else if (ordered) {
+              nodes.push(h('p', { key: key, className: 'dsuik-up-li' }, trimmed.slice(0, trimmed.indexOf(' ')) + ' ', renderInline(ordered[1], key)))
+            } else {
+              nodes.push(h('p', { key: key, className: 'dsuik-up-p' }, renderInline(trimmed, key)))
+            }
+          })
+          return nodes
+        }
+
+        /* The Host runs the install itself: same guard rails as its own plugin
+         * page (running agents block it), and it reports `restart-required` when
+         * the change only lands at the next start. */
+        async function runUpdate(name, target, onProgress) {
+          const pm = pluginManager()
+          if (!pm) throw new Error('the plugin manager is unavailable')
+          if (typeof onProgress === 'function') {
+            onProgress({ state: 'running', progress: { percent: null, detail: '' } })
+          }
+          const requestId = 'ui-optimize-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7)
+          const answer = await pm.updateBundle(name, target.version, { requestId: requestId })
+          if (!answer || answer.ok !== true) {
+            return {
+              state: 'failed',
+              failure: { code: 'UPDATE_REJECTED', message: failureMessage(answer && answer.error) },
+            }
+          }
+          const update = answer.value || {}
+          const change = update.result || {}
+          if (change.application === 'cancelled') return { state: 'cancelled' }
+          if (change.application === 'failed' || change.application === 'overridden') {
+            return {
+              state: 'failed',
+              failure: {
+                code: 'UPDATE_REJECTED',
+                message: failureMessage(change.error) || change.application,
+              },
+            }
+          }
+          return {
+            state: 'succeeded',
+            installedVersion: update.to || target.version,
+            restartRequired: change.application === 'restart-required',
+          }
+        }
+
+        function spinIcon(size) {
+          const px = size || 13
+          return h('svg', {
+            className: 'dsuik-up-spin',
+            viewBox: '0 0 16 16',
+            width: px,
+            height: px,
+            'aria-hidden': 'true',
+          },
+            h('circle', {
+              cx: 8, cy: 8, r: 6,
+              fill: 'none',
+              stroke: 'currentColor',
+              'stroke-width': 2,
+              'stroke-linecap': 'round',
+              'stroke-dasharray': '26 12',
+            }))
+        }
+
+        function updateLabel(row) {
+          if (row.state === 'running') return translate('updates.running')
+          if (row.state === 'succeeded') return translate('updates.succeeded')
+          if (row.state === 'failed') return translate('updates.failed')
+          if (row.age === undefined) return translate('updates.readingAge')
+          if (row.age === null) return translate('updates.unknownAge')
+          if (row.age < FRESH_RELEASE_MS) return translate('updates.waiting')
+          return ''
+        }
+
+        /* The badge sits in the tab strip, outside this panel, so the count is kept
+         * in a tiny module store: the label subscribes, the panel publishes. */
+        const updateBadge = {
+          count: 0,
+          listeners: new Set(),
+          set: function (next) {
+            if (next === updateBadge.count) return
+            updateBadge.count = next
+            updateBadge.listeners.forEach(function (listener) {
+              listener()
+            })
+          },
+        }
+
+        let badgeScan = null
+        /* One scan at start-up keeps the badge right before the tab is ever opened.
+         * Same 24h rule as the panel, and the same "no age, not eligible" stance. */
+        function refreshUpdateBadge() {
+          if (store.state.updates === false) {
+            updateBadge.set(0)
+            return Promise.resolve(0)
+          }
+          if (badgeScan) return badgeScan
+          badgeScan = (async function () {
+            try {
+              const scan = await collectUpdates()
+              const fallbackOn = store.state.updatesFallback === true
+              /* Same rule as the list: a fallback row counts only when the
+               * previous release is actually newer than what is installed. */
+              updateBadge.set(
+                scan.rows.filter(function (row) {
+                  if (typeof row.age === 'number' && row.age >= FRESH_RELEASE_MS) return true
+                  if (!fallbackOn || !row.fallbackVersion) return false
+                  return compareVersions(row.fallbackVersion, row.installed) > 0
+                }).length,
+              )
+            } catch (error) {
+              updateBadge.set(0)
+            }
+            return updateBadge.count
+          })()
+          const settled = badgeScan.finally(function () {
+            /* Release the guard: the badge has to be recomputable after an update,
+             * a settings change, or a manual re-check. Keeping it cached forever
+             * froze the number at its first scan. */
+            badgeScan = null
+          })
+          badgeScan = settled
+          return settled
+        }
+
+        function useUpdateBadge() {
+          const [count, setCount] = React.useState(updateBadge.count)
+          React.useEffect(function () {
+            function sync() {
+              setCount(updateBadge.count)
+            }
+            updateBadge.listeners.add(sync)
+            sync()
+            return function () {
+              updateBadge.listeners.delete(sync)
+            }
+          }, [])
+          return count
+        }
+
+        function UpdateBadge() {
+          const count = useUpdateBadge()
+          if (count <= 0) return null
+          return h('span', { className: 'dsuik-up-badge' }, String(count))
+        }
+
+        function UpdatesTab() {
+          const [phase, setPhase] = React.useState('loading')
+          /* Mirror of `phase` for timers: reading a ref avoids calling one
+           * setState from inside another setState's updater, which throws. */
+          const phaseRef = React.useRef('loading')
+          function setPhaseSafe(next) {
+            phaseRef.current = next
+            setPhase(next)
+          }
+          const [rows, setRows] = React.useState([])
+          const [checked, setChecked] = React.useState(0)
+          const [message, setMessage] = React.useState('')
+          const [busy, setBusy] = React.useState(false)
+          const [open, setOpen] = React.useState({})
+          const [notes, setNotes] = React.useState({})
+          const [settings, setSettings] = React.useState(store.state)
+          const [clock, setClock] = React.useState(0)
+          const alive = React.useRef(true)
+          const fallbackOn = settings.updatesFallback === true
+
+          React.useEffect(function () {
+            return store.subscribe(function () {
+              setSettings(store.state)
+            })
+          }, [])
+
+          React.useEffect(function () {
+            alive.current = true
+            /* Ticks once a second so a frozen main thread is visible on screen:
+             * if this number stops moving, React is not re-rendering at all. */
+            const ticker = setInterval(function () {
+              if (phaseRef.current !== 'loading') return
+              setClock(function (value) { return value + 1 })
+            }, 1000)
+            load().catch(function (err) {
+              if (!alive.current) return
+              phaseRef.current = 'error'
+              setMessage('load() threw: ' + String((err && err.message) || err))
+              setPhaseSafe('error')
+            })
+            return function () {
+              alive.current = false
+              clearInterval(ticker)
+            }
+          }, [])
+
+          function patch(name, changes) {
+            if (!alive.current) return
+            setRows(function (previous) {
+              return previous.map(function (row) {
+                return row.name === name ? Object.assign({}, row, changes) : row
+              })
+            })
+          }
+
+          async function load() {
+            if (store.state.updates === false) {
+              setPhaseSafe('off')
+              return
+            }
+            phaseRef.current = 'loading'
+            setPhaseSafe('loading')
+            setMessage('')
+            setRows([])
+            /* Rows appear as their registry answers arrive, so a slow package
+             * never leaves the panel empty. */
+            const scan = await collectUpdates(function (row) {
+              if (!alive.current) return
+              phaseRef.current = 'ready'
+              setPhaseSafe('ready')
+              setRows(function (previous) {
+                const next = previous.filter(function (item) {
+                  return item.name !== row.name
+                })
+                next.push(row)
+                next.sort(function (a, b) {
+                  return a.name.localeCompare(b.name)
+                })
+                return next
+              })
+            })
+            if (!alive.current) return
+            if (scan.supported === false) {
+              if (scan.stalled === 'listBundles') {
+                phaseRef.current = 'error'
+                setPhaseSafe('error')
+                setMessage(
+                  translate('updates.pmStalled')
+                    .replace('{names}', String(scan.names || 'none'))
+                )
+                return
+              }
+              setPhaseSafe('unsupported')
+              return
+            }
+            setChecked(scan.checked)
+            setMessage('')
+            phaseRef.current = 'ready'
+            if (scan.rows.length === 0 && scan.stats && scan.stats.tried > 0 && scan.stats.failed === scan.stats.tried) {
+              /* The registry never answered: say so instead of claiming the
+               * machine is fully up to date. */
+              setPhaseSafe('error')
+              setMessage(translate('updates.registryDown'))
+              return
+            }
+            setPhaseSafe('ready')
+          }
+
+          /* What this row would install, or null when the 24-hour rule (and the
+           * optional fallback) leaves nothing safe to install. */
+          function targetOf(row) {
+            /* A release the running DSH cannot load is not an update target. */
+            if (row.compat) return null
+            if (typeof row.age === 'number' && row.age >= FRESH_RELEASE_MS) {
+              return { version: row.latest, fallback: false }
+            }
+            /* The previous release is only useful when it is actually newer than
+             * what is installed — otherwise "update" would be a no-op. */
+            if (fallbackOn && row.fallbackVersion && compareVersions(row.fallbackVersion, row.installed) > 0) {
+              return { version: row.fallbackVersion, fallback: true }
+            }
+            return null
+          }
+
+          /* The version this row will actually end up on — the changelog range has
+           * to stop there, otherwise a fallback row would list changes for a
+           * release it is deliberately not installing today. */
+          function targetVersion(row) {
+            const target = targetOf(row)
+            return target ? target.version : row.latest
+          }
+
+          const eligible = rows.filter(function (row) {
+            return row.state !== 'succeeded' && targetOf(row) !== null
+          })
+
+          React.useEffect(function () {
+            updateBadge.set(eligible.length)
+          }, [eligible.length])
+
+          async function updateAll() {
+            if (busy) return
+            const targets = eligible.map(function (row) {
+              return { name: row.name, from: row.installed, target: targetOf(row) }
+            })
+            if (targets.length === 0) return
+            setBusy(true)
+            setMessage('')
+            for (let index = 0; index < targets.length; index += 1) {
+              const name = targets[index].name
+              patch(name, { state: 'running', percent: null, detail: '' })
+              try {
+                const operation = await runUpdate(name, targets[index].target, function (next) {
+                  const progress = next && next.progress ? next.progress : null
+                  patch(name, {
+                    percent: progress && typeof progress.percent === 'number' ? progress.percent : null,
+                    detail: progress && progress.detail ? progress.detail : '',
+                  })
+                })
+                const ok = operation && operation.state === 'succeeded'
+                patch(name, {
+                  state: ok ? 'succeeded' : 'failed',
+                  percent: 100,
+                  done: ok
+                    ? { from: targets[index].from, to: (operation && operation.installedVersion) || targets[index].target.version }
+                    : undefined,
+                  detail: ok
+                    ? ''
+                    : operation && operation.failure
+                      ? operation.failure.code + ' — ' + operation.failure.message
+                      : (operation && operation.state) || 'failed',
+                })
+              } catch (err) {
+                patch(name, { state: 'failed', percent: 100, detail: err.message })
+              }
+            }
+            if (alive.current) {
+              setBusy(false)
+              setMessage(translate('updates.reloadHint'))
+            }
+            refreshUpdateBadge()
+          }
+
+          const header = h(
+            'div',
+            { className: 'dsuik-up-header' },
+            h('div', { className: 'dsuik-up-headtext' },
+              h('p', { className: 'dsuik-up-title' }, translate('updates.title')),
+              h('p', { className: 'dsuik-up-sub' }, translate('updates.sub')),
+            ),
+            h('div', { className: 'dsuik-up-actions' },
+              h('button', {
+                type: 'button',
+                className: 'dsuik-up-btn',
+                disabled: busy || phase === 'loading',
+                onClick: load,
+              }, phase === 'loading'
+                ? h('span', { className: 'dsuik-up-btnlabel' },
+                    spinIcon(),
+                    translate('updates.checking'))
+                : translate('updates.check')),
+              h('button', {
+                type: 'button',
+                className: 'dsuik-up-btn is-primary',
+                disabled: busy || phase !== 'ready' || eligible.length === 0,
+                onClick: updateAll,
+              }, busy ? translate('updates.updating') : translate('updates.updateAll') + ' (' + String(eligible.length) + ')'),
+            ),
+          )
+
+          if (settings.updates === false && phase !== 'loading') {
+            return h('div', { className: 'dsuik-up' }, 
+              h('div', { className: 'dsuik-up-header' },
+                h('div', { className: 'dsuik-up-headtext' },
+                  h('p', { className: 'dsuik-up-title' }, translate('updates.off')),
+                  h('p', { className: 'dsuik-up-sub' }, translate('updates.offHint')),
+                ),
+              ),
+            )
+          }
+
+          if (phase === 'unsupported') {
+            return h('div', { className: 'dsuik-up' },  header,
+              h('p', { className: 'dsuik-up-note' }, translate('updates.unsupported')))
+          }
+
+          /* Warm the cache before the click lands: hover, focus and touch-down all
+           * give us a head start on the GitHub round trip. */
+          function prefetchNotes(row) {
+            if (notes[row.name] || !row.repo) return
+            setNotes(function (previous) {
+              return previous[row.name] ? previous : Object.assign({}, previous, { [row.name]: { state: 'loading' } })
+            })
+            readChangelog(row.repo, targetVersion(row), row.installed).then(function (info) {
+              if (!alive.current) return
+              setNotes(function (previous) {
+                return Object.assign({}, previous, { [row.name]: info })
+              })
+            }, function () {
+              if (!alive.current) return
+              setNotes(function (previous) {
+                return Object.assign({}, previous, { [row.name]: { state: 'failed' } })
+              })
+            })
+          }
+
+          function toggleNotes(row) {
+            const isOpen = !!open[row.name]
+            setOpen(function (previous) {
+              const next = Object.assign({}, previous)
+              next[row.name] = !isOpen
+              return next
+            })
+            if (isOpen) return
+            prefetchNotes(row)
+          }
+
+          function notesView(name, row) {
+            const note = notes[name] || { state: 'loading' }
+            if (note.state === 'loading') return translate('updates.notesLoading')
+            if (note.state === 'rate') return translate('updates.notesRate')
+            if (note.state === 'failed') return translate('updates.notesFailed')
+            if (note.state !== 'ready') return translate('updates.notesEmpty')
+            const blocks = []
+            note.groups.forEach(function (group, groupIndex) {
+              const rendered = renderNotes(group.body, name + '-' + group.version)
+              /* A version whose notes are English-only still gets its heading:
+               * dropping the whole block made the list skip 1.73.16 and 1.73.15
+               * and look as if the target version had no entry at all. */
+              if (note.groups.length > 1) {
+                blocks.push(h('p', { key: name + '-v' + String(groupIndex), className: 'dsuik-up-verhead' }, 'v' + group.version))
+              }
+              blocks.push(h('div', { key: name + '-g' + String(groupIndex), className: 'dsuik-up-group' },
+                rendered.length === 0
+                  ? h('p', { className: 'dsuik-up-li is-empty' }, translate('updates.notesNoZhVersion'))
+                  : rendered))
+            })
+            if (blocks.length === 0) return translate('updates.notesNoZh')
+            if (note.groups.length > 1) {
+              blocks.unshift(h('p', { key: name + '-span', className: 'dsuik-up-span' },
+                translate('updates.notesSpan').replace('{from}', String(row.installed || '?'))))
+            }
+            return blocks
+          }
+
+          /* Every card is a disclosure: click the chip to fold the release notes
+           * out underneath it, click again to fold them away. */
+          function rowView(row, index, quiet) {
+            const target = targetOf(row)
+            /* Rows are created with state:'idle', not with an empty state —
+             * `!row.state` was therefore never true and every row looked "busy",
+             * which is what pushed the wait label back onto finished rows. */
+            const idle = !row.state || row.state === 'idle'
+            const usingFallback = !!target && target.fallback
+            const fallbackShown = usingFallback ? target.version : ''
+            /* A running or finished row speaks with its state, not with the plan:
+             * the "previous release" tag belongs to a row that has not started yet,
+             * otherwise 更新中 never gets a chance to show. */
+            const label = idle ? (quiet || usingFallback ? '' : updateLabel(row)) : updateLabel(row)
+            /* Nothing to install yet: say how far the nearest candidate is, so a
+             * row that is "waiting" does not look like the plugin forgot it.
+             * Only idle rows: a finished row must not read "已更新 · 剩余 5.1 小时". */
+            const soon = idle && !usingFallback && typeof row.age === 'number' && row.age < FRESH_RELEASE_MS
+              ? translate('updates.latestSoon')
+                  .replace('{hours}', String(Math.max(0.1, Math.ceil(((FRESH_RELEASE_MS - row.age) / 3600000) * 10) / 10)))
+              : ''
+            const isOpen = !!open[row.name]
+            return h(
+              'li',
+              {
+                key: row.name,
+                className: 'dsuik-up-row'
+                  + (row.state === 'running' ? ' is-running' : '')
+                  + (row.state === 'succeeded' ? ' is-ok' : '')
+                  + (row.state === 'failed' ? ' is-fail' : '')
+                  + (isOpen ? ' is-open' : ''),
+                style: { animationDelay: String(Math.min(index, 12) * 18) + 'ms' },
+              },
+              h('button', {
+                type: 'button',
+                className: 'dsuik-up-head',
+                'aria-expanded': isOpen ? 'true' : 'false',
+                title: translate('updates.notesToggle'),
+                onMouseEnter: function () {
+                  prefetchNotes(row)
+                },
+                onFocus: function () {
+                  prefetchNotes(row)
+                },
+                onPointerDown: function () {
+                  prefetchNotes(row)
+                },
+                onClick: function () {
+                  toggleNotes(row)
+                },
+              },
+                h('span', { className: 'dsuik-up-main' },
+                  h('span', { className: 'dsuik-up-name' }, row.name),
+                  h('span', { className: 'dsuik-up-ver' },
+                    String((row.done && row.done.from) || row.installed || '?') +
+                      ' → ' +
+                      String((row.done && row.done.to) || fallbackShown || row.latest || '?')),
+                  soon ? h('span', { className: 'dsuik-up-soon' }, soon) : null,
+                  label ? h('span', { className: 'dsuik-up-tag' }, label) : null,
+                  fallbackShown ? h('span', { className: 'dsuik-up-tag', title: translate('updates.fallbackWhy') }, translate('updates.fallbackTag')) : null,
+                  row.compat && !row.state
+                    ? h('span', { className: 'dsuik-up-tag is-warn', title: translate('updates.section.blockedHint') },
+                        translate('updates.compatTag').replace('{version}', String(row.compat.required || row.compat.runtime || '?')))
+                    : null,
+                  row.detail ? h('span', { className: 'dsuik-up-detail' }, row.detail) : null,
+                ),
+                h('span', { className: 'dsuik-up-chev', 'aria-hidden': 'true' }, isOpen ? '▾' : '▸'),
+              ),
+              row.state === 'running'
+                ? (row.percent === null
+                    ? h('div', { className: 'dsuik-up-bar is-indef' }, h('i'))
+                    : h('div', { className: 'dsuik-up-bar' }, h('i', { style: { width: String(row.percent || 0) + '%' } })))
+                : null,
+              isOpen ? h('div', { className: 'dsuik-up-notes' }, notesView(row.name, row)) : null,
+            )
+          }
+
+          /* Two areas: everything the 24-hour rule lets us touch on top, the rest
+           * below it, so the button above always matches the list above. */
+          const groups = { ready: [], blocked: [], waiting: [] }
+          rows.forEach(function (row) {
+            const ready = row.state === 'succeeded' || targetOf(row) !== null
+            if (ready) groups.ready.push(row)
+            else if (row.compat && row.state !== 'succeeded') groups.blocked.push(row)
+            else groups.waiting.push(row)
+          })
+          /* Soonest to unlock first: 25h old is 23h from being updateable, 4h old
+           * is 20h away. Rows whose age could not be read go last — we cannot
+           * promise a time for them. */
+          groups.waiting.sort(function (a, b) {
+            const left = function (row) {
+              return typeof row.age === 'number' ? row.age : -Infinity
+            }
+            return left(b) - left(a)
+          })
+
+          /* How many of the checked plugins simply have nothing newer. Without it,
+           * "30 checked" next to ten visible rows reads like a failed scan. */
+          const upToDate = Math.max(0, checked - rows.length)
+
+          function sectionArea(titleKey, items, muted, hintKey, always) {
+            if (items.length === 0 && !always) return null
+            return h(
+              'section',
+              { className: 'dsuik-up-section' + (muted ? ' is-muted' : '') },
+              h('div', { className: 'dsuik-up-section-head' },
+                h('p', { className: 'dsuik-up-section-title' },
+                  translate(titleKey) + ' (' + String(items.length) + ')'),
+                hintKey
+                  ? h('p', { className: 'dsuik-up-section-hint' },
+                      hintKey.indexOf('updates.') === 0 ? translate(hintKey) : hintKey)
+                  : null,
+              ),
+              items.length === 0
+                ? null
+                : h('ul', { className: 'dsuik-up-list' },
+                    items.map(function (row, index) { return rowView(row, index, muted) })),
+            )
+          }
+
+          return h(
+            'div',
+            { className: 'dsuik-up' },
+            
+            header,
+            phase === 'error' ? h('p', { className: 'dsuik-up-note is-error' }, translate('updates.loadFailed') + ' — ' + message) : null,
+            phase === 'loading'
+              ? h('div', { className: 'dsuik-up-loading', role: 'status' },
+                  spinIcon(16),
+                  h('span', null,
+                    message ||
+                      (clock >= 13
+                        ? translate('updates.pmTimeout')
+                            .replace('{remote}', pluginManager() ? 'yes' : 'no')
+                            .replace('{ms}', String(clock))
+                        : clock >= 4
+                          ? translate('updates.pmWaiting').replace('{remote}', pluginManager() ? 'yes' : 'no')
+                          : translate('updates.loadingDetail'))))
+              : null,
+            phase === 'ready'
+              ? h('p', { className: 'dsuik-up-note' },
+                  String(checked) + ' ' + translate('updates.checked') +
+                    (upToDate > 0 ? ' · ' + translate('updates.upToDate').replace('{n}', String(upToDate)) : ''))
+              : null,
+            /* The ready area stays on screen even when it is empty, so the page
+             * always answers "is there anything for me?" instead of going blank. */
+            phase === 'ready' ? sectionArea('updates.section.ready', groups.ready, false, null, true) : null,
+            phase === 'ready' ? sectionArea('updates.section.waiting', groups.waiting, true, 'updates.section.waitingHint', false) : null,
+            phase === 'ready'
+              ? sectionArea(
+                  'updates.section.blocked',
+                  groups.blocked,
+                  true,
+                  translate('updates.section.blockedHint').replace(
+                    '{runtime}',
+                    String((groups.blocked[0] && groups.blocked[0].compat && groups.blocked[0].compat.runtime) || ''),
+                  ),
+                  false,
+                )
+              : null,
+            message && phase !== 'error' ? h('p', { className: 'dsuik-up-note' }, message) : null,
+          )
+        }
+
+        const UPDATES_CSS = `
+.dsuik-up{display:flex;flex-direction:column;gap:14px;padding:4px 0 24px;font-size:14px;color:var(--dsw-alias-label-primary);}
+.dsuik-up-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+.dsuik-up-headtext{display:flex;flex-direction:column;gap:6px;min-width:240px;flex:1;}
+.dsuik-up-title{margin:0;font-size:16px;font-weight:600;line-height:1.4;}
+.dsuik-up-sub{margin:0;font-size:13px;line-height:1.65;color:var(--dsw-alias-label-secondary);}
+.dsuik-up-actions{display:flex;gap:8px;flex-shrink:0;}
+.dsuik-up-btn{font:inherit;font-size:13px;min-width:96px;padding:6px 12px;border-radius:8px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);color:inherit;cursor:pointer;transition:border-color .16s ease,background .16s ease;}
+.dsuik-up-btn:hover:not(:disabled){border-color:var(--dsw-alias-border-l2);}
+.dsuik-up-btn:disabled{opacity:.5;cursor:default;}
+.dsuik-up-btn.is-primary{background:var(--dsw-alias-brand-primary);border-color:transparent;color:#fff;}
+.dsuik-up-note{margin:0;font-size:12.5px;line-height:1.6;color:var(--dsw-alias-label-secondary);}
+.dsuik-up-note.is-error{color:var(--dsw-alias-label-error, #c0392b);}
+@keyframes dsuik-up-rotate{to{transform:rotate(1turn)}}
+@keyframes dsuik-up-shimmer{0%{background-position:150% 0}100%{background-position:-50% 0}}
+@keyframes dsuik-up-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.dsuik-up-btnlabel{display:inline-flex;align-items:center;gap:6px;}
+.dsuik-up-spin{display:block;flex:0 0 auto;animation:dsuik-up-rotate .8s linear infinite;}
+.dsuik-up-section-head{display:flex;flex-direction:column;gap:2px;}
+.dsuik-up-section-hint{margin:0;font-size:12px;line-height:1.55;color:var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary));}
+.dsuik-up-section{display:flex;flex-direction:column;gap:10px;animation:dsuik-up-in .26s cubic-bezier(.2,.8,.3,1) both;}
+.dsuik-up-section+.dsuik-up-section{margin-top:4px;padding-top:18px;border-top:1px solid var(--dsw-alias-border-l1);}
+.dsuik-up-section-title{margin:0;font-size:12.5px;font-weight:600;letter-spacing:.01em;color:var(--dsw-alias-label-primary);}
+.dsuik-up-section.is-muted .dsuik-up-row{opacity:.7;background:transparent;}
+.dsuik-up-note.is-empty{padding:10px 12px;border:1px dashed var(--dsw-alias-border-l1);border-radius:10px;}
+.dsuik-up-loading{display:flex;align-items:center;justify-content:center;gap:8px;padding:34px 0 30px;font-size:13px;color:var(--dsw-alias-label-secondary);animation:dsuik-up-in .2s ease-out both;}
+@media (prefers-reduced-motion: reduce){.dsuik-up-section,.dsuik-up-row,.dsuik-up-loading{animation:none;}}
+.dsuik-up-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;align-items:flex-start;}
+.dsuik-up-row{display:flex;flex-direction:column;gap:4px;width:auto;align-self:flex-start;padding:3px 10px;border:1px solid var(--dsw-alias-border-l1);border-radius:999px;background:var(--dsw-alias-bg-layer-1);animation:dsuik-up-in .24s cubic-bezier(.2,.8,.3,1) both;transition:border-color .2s ease,opacity .25s ease;}
+.dsuik-up-head{display:flex;align-items:center;flex-wrap:nowrap;gap:6px;margin:0;padding:0;border:0;background:none;font:inherit;color:inherit;cursor:pointer;text-align:left;}
+.dsuik-up-chev{font-size:10px;line-height:1;color:var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary));}
+.dsuik-up-row.is-open{border-radius:12px;max-width:640px;}
+.dsuik-up-span{margin:0 0 6px;font-size:11.5px;color:var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary));}
+.dsuik-up-verhead{margin:8px 0 2px;font-size:11.5px;font-weight:600;color:var(--dsw-alias-label-secondary);}
+.dsuik-up-group+.dsuik-up-group{margin-top:8px;padding-top:8px;border-top:1px dashed var(--dsw-alias-border-l1);}
+.dsuik-up-notes .dsuik-up-h{margin:6px 0 2px;font-weight:600;color:var(--dsw-alias-label-primary);}
+.dsuik-up-notes .dsuik-up-p{margin:2px 0;}
+.dsuik-up-notes .dsuik-up-li{margin:2px 0;padding-left:10px;text-indent:-10px;}
+.dsuik-up-notes .dsuik-up-li.is-empty{color:var(--dsw-alias-label-secondary);}
+.dsuik-up-notes code{padding:0 3px;border-radius:4px;background:var(--dsw-alias-bg-layer-2, rgba(0,0,0,.06));font-size:11.5px;}
+.dsuik-up-link{text-decoration:underline;}
+.dsuik-up-notes{margin-top:2px;padding-top:8px;border-top:1px dashed var(--dsw-alias-border-l1);font-size:12px;line-height:1.65;color:var(--dsw-alias-label-secondary);word-break:break-word;max-height:320px;overflow:auto;}
+.dsuik-up-row.is-running .dsuik-up-tag,.dsuik-up-row.is-ok .dsuik-up-tag,.dsuik-up-row.is-fail .dsuik-up-tag{background:transparent;}
+.dsuik-up-row.is-running{border-color:color-mix(in srgb, var(--dsw-alias-state-warn-primary) 55%, transparent);background:color-mix(in srgb, var(--dsw-alias-state-warn-primary) 12%, var(--dsw-alias-bg-layer-1));}
+.dsuik-up-row.is-ok{border-color:color-mix(in srgb, var(--dsw-alias-state-success-primary) 55%, transparent);background:color-mix(in srgb, var(--dsw-alias-state-success-primary) 12%, var(--dsw-alias-bg-layer-1));}
+.dsuik-up-row.is-fail{border-color:color-mix(in srgb, var(--dsw-alias-state-error-primary) 55%, transparent);background:color-mix(in srgb, var(--dsw-alias-state-error-primary) 12%, var(--dsw-alias-bg-layer-1));}
+.dsuik-up-main{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+.dsuik-up-name{font-weight:500;font-size:12.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.dsuik-up-ver{font-size:12.5px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.dsuik-up-soon{font-size:12px;color:var(--dsw-alias-label-secondary);white-space:nowrap;flex:0 0 auto;}
+.dsuik-up-tag{font-size:12px;padding:1px 8px;border-radius:999px;background:var(--dsw-alias-bg-layer-2, rgba(0,0,0,.05));color:var(--dsw-alias-label-secondary);}
+.dsuik-up-detail{font-size:12px;color:var(--dsw-alias-label-secondary);flex-basis:100%;word-break:break-word;}
+.dsuik-up-bar{min-width:120px;height:4px;border-radius:999px;background:var(--dsw-alias-bg-layer-2, rgba(0,0,0,.07));overflow:hidden;}
+.dsuik-up-bar>i{display:block;height:100%;background:var(--dsw-alias-brand-primary);transition:width .3s ease;}
+.dsuik-up-tag.is-warn{color:var(--dsw-alias-state-error-primary, var(--dsw-alias-label-secondary));}
+.dsuik-up-row.is-running .dsuik-up-bar>i{background:var(--dsw-alias-state-warn-primary, var(--dsw-alias-brand-primary));}
+.dsuik-up-bar.is-indef>i{width:35%;animation:dsuik-up-slide 1.15s ease-in-out infinite;}
+@keyframes dsuik-up-slide{0%{transform:translateX(-60%)}100%{transform:translateX(300%)}}
+@media (prefers-reduced-motion: reduce){.dsuik-up-bar.is-indef>i{animation-duration:2.4s;}}
+.dsuik-up-tab{display:inline-flex;align-items:center;gap:5px;}
+.dsuik-up-badge{position:relative;top:-4px;min-width:15px;height:15px;padding:0 4px;box-sizing:border-box;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;line-height:1;letter-spacing:0;font-variant-numeric:tabular-nums;color:var(--dsw-alias-state-business-primary);background:color-mix(in srgb, var(--dsw-alias-state-business-primary) 14%, transparent);}
+`
+
+        ctx.slots.inject('plugins.tab', function () {
+          return ctx.slots.register(
+            {
+              name: 'plugins.tab',
+              id: 'ui-optimize-updates',
+              order: 100,
+              label: function () {
+                return h(
+                  'span',
+                  { className: 'dsuik-up-tab' },
+                  translate('updates.tab'),
+                  h(UpdateBadge),
+                )
+              },
+            },
+            UpdatesTab,
+          )
+        })
+
+        /* The tab label renders outside the panel, so the badge styles cannot ride
+         * on the panel's own markup — they have to be registered with the run. */
+        ctx.effect(function () {
+          const style = document.createElement('style')
+          style.setAttribute('data-dsh-ui-optimize', 'updates')
+          style.textContent = UPDATES_CSS
+          document.head.appendChild(style)
+          return function () {
+            style.remove()
+          }
+        }, 'dsh-ui-optimize: update styles')
+
+        ctx.effect(function () {
+          refreshUpdateBadge()
+        })
 
         ctx.slots.inject('settings.section', function () {
           return ctx.slots.register(

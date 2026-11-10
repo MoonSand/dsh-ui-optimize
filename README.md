@@ -37,6 +37,14 @@ The **More** row keeps its own line. Folding it in was tried and dropped: the sh
 
 The launcher follows the pattern of the community plugin [dsh-sidebar-shelf](https://github.com/wumouren114/dsh-sidebar-shelf): register a real rail row, hide the rest with one scoped CSS rule, enumerate entries through the slot API, and select a panel through the shell's own API rather than by faking clicks.
 
+### Updates
+
+The plugin page gets an **Updates** tab. It reads what is installed from the host's own plugin manager and each package's newest release and publish time from the npm registry — no marketplace plugin involved — then updates the whole eligible set with one click through that same host service.
+
+Only releases **published at least 24 hours ago** are installed. Anything younger is listed and skipped: a release published hours ago can still be withdrawn or patched, and the market's own fresh-release wait already encodes that. A release whose publish time cannot be read is skipped too — the rule cannot be confirmed, so it is not claimed. Progress, failure codes and per-package state come from the market's operation records, so an update this tab starts is the same operation the market itself would run, rollback included. Reload the page afterwards: the new client half only loads on a fresh page.
+
+Without the market (or when the host answers 401/404), the tab says so and stays inert rather than pretending to check.
+
 ## Known limitations
 
 - The theme choice lives in browser `localStorage`; it is lost with the browser profile or site data
