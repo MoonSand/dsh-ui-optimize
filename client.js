@@ -111,8 +111,8 @@ window.__ModuleLoader__.load({
         'updates.notesNoZhVersion': 'No Chinese notes for this version.',
         'updates.notesSpan': 'Changes since {from}',
         'updates.updateAll': 'Update all',
-        'updates.needRestartHint': '{n} of them only take effect after DSH restarts — the new code is on disk, the running process still has the old one. Restarting also reloads the page, so one restart covers both. Restart when convenient.',
-        'updates.needRefreshHint': 'Done. Reload the page to load the new client code.',
+        'updates.needRestartHint': 'Restart DSH to apply {n} plugin(s) — the new code is on disk, the running process still holds the old one. One restart also reloads the page, so you do not need to refresh afterwards.',
+        'updates.needRefreshHint': 'Refresh this page to apply the update — no restart needed.',
         'updates.updating': 'Updating…',
         'updates.none': 'Nothing to update.',
         'updates.upToDate': '{n} already up to date',
@@ -218,8 +218,8 @@ window.__ModuleLoader__.load({
         'updates.notesNoZhVersion': '该版本没有中文说明。',
         'updates.notesSpan': '自 {from} 以来的改动',
         'updates.updateAll': '一键更新',
-        'updates.needRestartHint': '{n} 个插件要重启 DSH 才真正生效——新代码已经在磁盘上，跑着的进程还是旧的。重启会连页面一起刷新，所以重启一次就都齐了，不急着马上重。',
-        'updates.needRefreshHint': '都更新完了，刷新页面即可加载新的客户端代码。',
+        'updates.needRestartHint': '需要重启 DSH 才能生效（{n} 个插件）——新代码已在磁盘上，运行中的进程还是旧代码。重启会一并刷新页面，不用再手动刷新。',
+        'updates.needRefreshHint': '刷新页面即可生效——不需要重启。',
         'updates.updating': '更新中…',
         'updates.none': '没有可更新的插件。',
         'updates.upToDate': '其余 {n} 个已是最新版',
@@ -3097,8 +3097,10 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
             const isOpen = !!open[row.name]
             return h(
               'li',
+              { key: row.name, className: 'dsuik-up-item' },
+              h(
+              'div',
               {
-                key: row.name,
                 className: 'dsuik-up-row'
                   + (row.state === 'running' ? ' is-running' : '')
                   + (row.state === 'succeeded' ? ' is-ok' : '')
@@ -3106,8 +3108,9 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
                   + (isOpen ? ' is-open' : ''),
                 style: { animationDelay: String(Math.min(index, 12) * 18) + 'ms' },
               },
-              h('button', {
-                type: 'button',
+              h('div', {
+                role: 'button',
+                tabIndex: 0,
                 className: 'dsuik-up-head',
                 'aria-expanded': isOpen ? 'true' : 'false',
                 title: translate('updates.notesToggle'),
@@ -3121,6 +3124,11 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
                   prefetchNotes(row)
                 },
                 onClick: function () {
+                  toggleNotes(row)
+                },
+                onKeyDown: function (event) {
+                  if (event.key !== 'Enter' && event.key !== ' ') return
+                  event.preventDefault()
                   toggleNotes(row)
                 },
               },
@@ -3147,6 +3155,7 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
                     : h('div', { className: 'dsuik-up-bar' }, h('i', { style: { width: String(row.percent || 0) + '%' } })))
                 : null,
               isOpen ? h('div', { className: 'dsuik-up-notes' }, notesView(row.name, row)) : null,
+              ),
             )
           }
 
@@ -3154,7 +3163,11 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
            * below it, so the button above always matches the list above. */
           const groups = { ready: [], blocked: [], waiting: [] }
           rows.forEach(function (row) {
-            const ready = row.state === 'succeeded' || targetOf(row) !== null
+            /* A row we are actively installing belongs with the rows you can act
+             * on, even when its release is still inside the 24-hour window —
+             * otherwise a forced update disappears into the "waiting" list while
+             * its progress bar is still moving. */
+            const ready = row.state === 'succeeded' || row.state === 'running' || targetOf(row) !== null
             if (ready) groups.ready.push(row)
             else if (row.compat && row.state !== 'succeeded') groups.blocked.push(row)
             else groups.waiting.push(row)
@@ -3266,6 +3279,8 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
 .dsuik-up-loading{display:flex;align-items:center;justify-content:center;gap:8px;padding:34px 0 30px;font-size:13px;color:var(--dsw-alias-label-secondary);animation:dsuik-up-in .2s ease-out both;}
 @media (prefers-reduced-motion: reduce){.dsuik-up-section,.dsuik-up-row,.dsuik-up-loading{animation:none;}}
 .dsuik-up-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;align-items:flex-start;}
+.dsuik-up-item{display:flex;align-items:center;gap:8px;align-self:flex-start;max-width:100%;}
+.dsuik-up-item .dsuik-up-row{align-self:auto;}
 .dsuik-up-row{display:flex;flex-direction:column;gap:4px;width:auto;align-self:flex-start;padding:3px 10px;border:1px solid var(--dsw-alias-border-l1);border-radius:999px;background:var(--dsw-alias-bg-layer-1);animation:dsuik-up-in .24s cubic-bezier(.2,.8,.3,1) both;transition:border-color .2s ease,opacity .25s ease;}
 .dsuik-up-head{display:flex;align-items:center;flex-wrap:nowrap;gap:6px;margin:0;padding:0;border:0;background:none;font:inherit;color:inherit;cursor:pointer;text-align:left;}
 .dsuik-up-chev{font-size:10px;line-height:1;color:var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary));}
