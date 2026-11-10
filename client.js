@@ -111,6 +111,8 @@ window.__ModuleLoader__.load({
         'updates.notesNoZhVersion': 'No Chinese notes for this version.',
         'updates.notesSpan': 'Changes since {from}',
         'updates.updateAll': 'Update all',
+        'updates.needRestartHint': '{n} of them only take effect after DSH restarts — the new code is on disk, the running process still has the old one. Restarting also reloads the page, so one restart covers both. Restart when convenient.',
+        'updates.needRefreshHint': 'Done. Reload the page to load the new client code.',
         'updates.updating': 'Updating…',
         'updates.none': 'Nothing to update.',
         'updates.upToDate': '{n} already up to date',
@@ -119,9 +121,9 @@ window.__ModuleLoader__.load({
         'updates.idle': 'Not checked yet.',
         'updates.unsupported': 'This host exposes no plugin manager, so updates cannot be checked here. Installed plugins still work.',
         'updates.registryDown': 'The npm registry did not answer, so the release dates are unknown. Public plugins stay listed as unchecked.',
-        'updates.pmTimeout': 'The host plugin manager did not answer within {ms}s (remote={remote}).',
-        'updates.pmWaiting': 'Waiting for the host plugin manager… (remote={remote})',
-        'updates.pmStalled': 'Listing the installed plugins never answered (8s). Namespaces seen: {names}',
+        'updates.pmTimeout': 'The host plugin manager is still busy after {ms}s. Try again in a moment.',
+        'updates.pmWaiting': 'Waiting for the host plugin manager…',
+        'updates.pmStalled': 'The host plugin manager did not answer. Try again in a moment.',
         'updates.loadFailed': 'The check failed',
         'updates.waiting': 'Published under a day ago — skipped until it is 24 hours old',
         'updates.unknownAge': 'Publish time could not be read — skipped, since the 24-hour rule cannot be confirmed',
@@ -216,6 +218,8 @@ window.__ModuleLoader__.load({
         'updates.notesNoZhVersion': '该版本没有中文说明。',
         'updates.notesSpan': '自 {from} 以来的改动',
         'updates.updateAll': '一键更新',
+        'updates.needRestartHint': '{n} 个插件要重启 DSH 才真正生效——新代码已经在磁盘上，跑着的进程还是旧的。重启会连页面一起刷新，所以重启一次就都齐了，不急着马上重。',
+        'updates.needRefreshHint': '都更新完了，刷新页面即可加载新的客户端代码。',
         'updates.updating': '更新中…',
         'updates.none': '没有可更新的插件。',
         'updates.upToDate': '其余 {n} 个已是最新版',
@@ -224,9 +228,9 @@ window.__ModuleLoader__.load({
         'updates.idle': '还没检查。',
         'updates.unsupported': '这台宿主没有可用的插件管理服务，所以这里查不了更新（已装插件不受影响）。',
         'updates.registryDown': 'npm registry 没有回应，读不到发布时间。公开插件暂时按「未检查」处理。',
-        'updates.pmTimeout': '宿主的插件管理服务 {ms} 秒没有响应（remote={remote}）。',
-        'updates.pmWaiting': '正在等宿主插件管理服务应答…（remote={remote}）',
-        'updates.pmStalled': '读取已装插件 8 秒没有回应（看到的命名空间：{names}）',
+        'updates.pmTimeout': '宿主的插件管理服务 {ms} 秒还没应答，过一会儿再试。',
+        'updates.pmWaiting': '正在等宿主插件管理服务应答…',
+        'updates.pmStalled': '宿主的插件管理服务没有应答，过一会儿再试。',
         'updates.loadFailed': '检查失败',
         'updates.waiting': '发布不足 24 小时 —— 等满一天再更新',
         'updates.unknownAge': '读不到发布时间 —— 无法确认是否满 24 小时，先跳过',
@@ -2171,20 +2175,6 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
           return pm && typeof pm.listBundles === 'function' ? pm : null
         }
 
-        /* Which remote namespaces the page actually got. Printed in the failure
-         * text so a missing or renamed namespace is visible without DevTools. */
-        function remoteNamespaces() {
-          try {
-            const remote = ctx.remote || (typeof ctx.get === 'function' ? ctx.get('remote') : null)
-            if (!remote) return 'none'
-            const keys = Object.keys(remote)
-            if (keys.length === 0) return 'empty'
-            return keys.slice(0, 10).join('|')
-          } catch (err) {
-            return 'error'
-          }
-        }
-
         function withTimeout(promise, ms) {
           return new Promise(function (resolve) {
             const timer = setTimeout(function () {
@@ -2231,9 +2221,20 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
         }
 
         const REGISTRY_TIMEOUT_MS = 8000
-        const REGISTRY_CONCURRENCY = 4
+        const REGISTRY_CONCURRENCY = 6
+
+        /* Every packument is a few hundred KB. The badge scan, a tab switch and a
+         * page reload all used to re-download all of them, which is why the first
+         * look at this tab felt like it hung. One cache, one network round trip. */
+        const REGISTRY_CACHE_MS = 10 * 60 * 1000
+        const SCAN_CACHE_MS = 2 * 60 * 1000
+        const registryCache = new Map()
+        const compatCache = new Map()
+        let scanCache = { at: 0, value: null }
 
         async function readRegistry(name) {
+          const cached = registryCache.get(name)
+          if (cached && Date.now() - cached.at < REGISTRY_CACHE_MS) return cached.doc
           const controller = typeof AbortController === 'function' ? new AbortController() : null
           const timer = controller
             ? setTimeout(function () {
@@ -2252,11 +2253,13 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
             const doc = await res.json()
             const time = (doc && doc.time) || {}
             const tags = (doc && doc['dist-tags']) || {}
-            return {
+            const parsed = {
               latest: typeof tags.latest === 'string' ? tags.latest : '',
               time: time,
               repo: readRepo(doc),
             }
+            registryCache.set(name, { at: Date.now(), doc: parsed })
+            return parsed
           } catch (err) {
             return null
           } finally {
@@ -2269,6 +2272,9 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
          * when its `engines.dsh` (or a DSH peer) rejects the running build, and
          * it already honours `compatibility.json` exemptions. */
         async function readCompat(pm, name, version) {
+          const key = name + '@' + version
+          const cachedCompat = compatCache.get(key)
+          if (cachedCompat !== undefined && Date.now() - cachedCompat.at < REGISTRY_CACHE_MS) return cachedCompat.doc
           try {
             const answer = await withTimeout(pm.listVersions(name), 8000)
             if (!answer || answer.timedOut || answer.error !== undefined) return null
@@ -2284,10 +2290,12 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
             const listed = Object.keys(requirements).map(function (key) {
               return key + ' ' + requirements[key]
             })
-            return {
+            const verdict = {
               runtime: hit.incompatible.runtimeVersion || '',
               required: requirements['engines.dsh'] || listed.join(', '),
             }
+            compatCache.set(key, { at: Date.now(), doc: verdict })
+            return verdict
           } catch (err) {
             return null
           }
@@ -2297,12 +2305,26 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
          * old that release is, and what the fallback would be. The list, the
          * section split, the count and the badge all derive from this. */
         async function collectUpdates(onRow) {
+          if (scanCache.value && Date.now() - scanCache.at < SCAN_CACHE_MS) return scanCache.value
           const pm = pluginManager()
           if (!pm) return { supported: false, checked: 0, rows: [] }
           let listed = null
-          const answer = await withTimeout(pm.listBundles(), 8000)
+          /* A remote proxy can throw on the call itself (dead channel), not only
+           * reject the promise — that used to escape load() and leave the panel
+           * in "loading" with the watchdog as the only thing still talking. */
+          let answer
+          try {
+            answer = await withTimeout(pm.listBundles(), 8000)
+          } catch (err) {
+            return {
+              supported: false,
+              checked: 0,
+              rows: [],
+              stalled: 'listBundles',
+            }
+          }
           if (answer.timedOut) {
-            return { supported: false, checked: 0, rows: [], stalled: 'listBundles', names: remoteNamespaces() }
+            return { supported: false, checked: 0, rows: [], stalled: 'listBundles' }
           }
           if (answer.error !== undefined) return { supported: false, checked: 0, rows: [] }
           listed = answer.value
@@ -2319,8 +2341,8 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
           const found = []
           const stats = { tried: 0, failed: 0 }
           let cursor = 0
-          /* Four at a time: the public registry throttles a burst of thirty, and
-           * one stalled request used to hold the whole panel in "loading". */
+          /* Six at a time: the public registry throttles a burst of thirty, and a
+           * big packument on one lane must not hold the others in "loading". */
           async function worker() {
             while (cursor < candidates.length) {
               const item = candidates[cursor]
@@ -2336,9 +2358,11 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
               const stamp = published === undefined ? NaN : Date.parse(published)
               const age = Number.isFinite(stamp) ? Date.now() - stamp : null
               const fallback = previousMatureVersion(doc.time, doc.latest)
-              const compat = await readCompat(pm, item.name, doc.latest)
+              /* Draw the row first: `listVersions` is a Host round trip of its own,
+               * and waiting for it before painting made an already-slow list feel
+               * frozen. The compatibility verdict lands on the row a moment later. */
               const row = {
-                compat: compat,
+                compat: null,
                 name: item.name,
                 installed: item.version,
                 latest: doc.latest,
@@ -2352,6 +2376,11 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
               }
               found.push(row)
               if (typeof onRow === 'function') onRow(row)
+              readCompat(pm, item.name, doc.latest).then(function (compat) {
+                if (!compat) return
+                row.compat = compat
+                if (typeof onRow === 'function') onRow(Object.assign({}, row))
+              })
             }
           }
           const lanes = []
@@ -2360,7 +2389,11 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
           found.sort(function (a, b) {
             return a.name.localeCompare(b.name)
           })
-          return { supported: true, checked: installed.length, rows: found, stats: stats }
+          const result = { supported: true, checked: installed.length, rows: found, stats: stats }
+          /* The badge scan runs at start-up, so by the time the tab is opened the
+           * answer is normally already here: keep it for a couple of minutes. */
+          scanCache = { at: Date.now(), value: result }
+          return result
         }
 
         /* The packument's repository field is the only place that knows where the
@@ -2657,19 +2690,48 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
           return h('span', { className: 'dsuik-up-badge' }, String(count))
         }
 
+        /* Progress lives outside the component: switching tabs unmounts it,
+         * and an install that is still running must not vanish with the view. */
+        const updateRun = {
+          rows: [],
+          checked: 0,
+          busy: false,
+          listeners: new Set(),
+          snapshot: function () {
+            return { rows: updateRun.rows, checked: updateRun.checked, busy: updateRun.busy }
+          },
+          set: function (changes) {
+            if (changes.rows !== undefined) updateRun.rows = changes.rows
+            if (changes.checked !== undefined) updateRun.checked = changes.checked
+            if (changes.busy !== undefined) updateRun.busy = changes.busy
+            const snap = updateRun.snapshot()
+            updateRun.listeners.forEach(function (fn) { fn(snap) })
+          },
+          subscribe: function (fn) {
+            updateRun.listeners.add(fn)
+            return function () { updateRun.listeners.delete(fn) }
+          }
+        }
+
         function UpdatesTab() {
-          const [phase, setPhase] = React.useState('loading')
+          const [phase, setPhase] = React.useState(updateRun.busy ? 'ready' : 'loading')
           /* Mirror of `phase` for timers: reading a ref avoids calling one
            * setState from inside another setState's updater, which throws. */
-          const phaseRef = React.useRef('loading')
+          const phaseRef = React.useRef(updateRun.busy ? 'ready' : 'loading')
           function setPhaseSafe(next) {
             phaseRef.current = next
             setPhase(next)
           }
-          const [rows, setRows] = React.useState([])
-          const [checked, setChecked] = React.useState(0)
+          const [run, setRun] = React.useState(updateRun.snapshot())
+          const rows = run.rows
+          const checked = run.checked
+          const busy = run.busy
+          function setRows(next) {
+            updateRun.set({ rows: typeof next === 'function' ? next(updateRun.rows) : next })
+          }
+          function setChecked(next) { updateRun.set({ checked: next }) }
+          function setBusy(next) { updateRun.set({ busy: next }) }
           const [message, setMessage] = React.useState('')
-          const [busy, setBusy] = React.useState(false)
           const [open, setOpen] = React.useState({})
           const [notes, setNotes] = React.useState({})
           const [settings, setSettings] = React.useState(store.state)
@@ -2684,6 +2746,10 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
           }, [])
 
           React.useEffect(function () {
+            return updateRun.subscribe(setRun)
+          }, [])
+
+          React.useEffect(function () {
             alive.current = true
             /* Ticks once a second so a frozen main thread is visible on screen:
              * if this number stops moving, React is not re-rendering at all. */
@@ -2694,7 +2760,8 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
             load().catch(function (err) {
               if (!alive.current) return
               phaseRef.current = 'error'
-              setMessage('load() threw: ' + String((err && err.message) || err))
+              console.warn('[dsh-ui-optimize] update scan failed', err)
+              setMessage(translate('updates.loadFailed'))
               setPhaseSafe('error')
             })
             return function () {
@@ -2704,7 +2771,6 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
           }, [])
 
           function patch(name, changes) {
-            if (!alive.current) return
             setRows(function (previous) {
               return previous.map(function (row) {
                 return row.name === name ? Object.assign({}, row, changes) : row
@@ -2712,15 +2778,50 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
             })
           }
 
-          async function load() {
+          async function load(force) {
+            /* "Check again" has to mean it: the cached scan would answer
+             * instantly and the button would look broken. */
+            if (force === true) {
+              scanCache = { at: 0, value: null }
+              registryCache.clear()
+            }
             if (store.state.updates === false) {
               setPhaseSafe('off')
               return
             }
-            phaseRef.current = 'loading'
-            setPhaseSafe('loading')
-            setMessage('')
-            setRows([])
+            /* A batch started from an earlier mount is still running: keep its
+             * rows and progress instead of rescanning over the top of it. */
+            if (updateRun.busy) {
+              setPhaseSafe('ready')
+              return
+            }
+            /* A warm scan is shown at once and then revalidated in the background:
+             * opening the tab always re-checks, but never blanks the list or makes
+             * the user press "Check again" to see current numbers. */
+            const warm = scanCache.value && Date.now() - scanCache.at < SCAN_CACHE_MS ? scanCache.value : null
+            const carried = updateRun.rows.filter(function (row) { return row.state === 'succeeded' })
+            if (warm) {
+              const merged = carried.slice()
+              warm.rows.forEach(function (row) {
+                if (carried.some(function (item) { return item.name === row.name })) return
+                merged.push(row)
+              })
+              merged.sort(function (a, b) { return a.name.localeCompare(b.name) })
+              setRows(merged)
+              setChecked(warm.checked)
+              phaseRef.current = 'ready'
+              setPhaseSafe('ready')
+              setMessage('')
+              scanCache = { at: 0, value: null }
+            } else {
+              phaseRef.current = 'loading'
+              setPhaseSafe('loading')
+              setMessage('')
+              /* Keep what this session already installed on screen: a rescan would
+               * otherwise drop those rows the moment the batch finishes, taking
+               * the only confirmation the user gets with them. */
+              setRows(carried)
+            }
             /* Rows appear as their registry answers arrive, so a slow package
              * never leaves the panel empty. */
             const scan = await collectUpdates(function (row) {
@@ -2743,16 +2844,28 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
               if (scan.stalled === 'listBundles') {
                 phaseRef.current = 'error'
                 setPhaseSafe('error')
-                setMessage(
-                  translate('updates.pmStalled')
-                    .replace('{names}', String(scan.names || 'none'))
-                )
+                setMessage(translate('updates.pmStalled'))
                 return
               }
-              setPhaseSafe('unsupported')
+              setPhaseSafe('error')
+              setMessage(translate('updates.pmStalled'))
               return
             }
             setChecked(scan.checked)
+            /* Reconcile with the fresh scan: a warm list can hold rows that have
+             * since been installed (here or elsewhere) and must not linger. */
+            setRows(function (previous) {
+              const kept = previous.filter(function (row) {
+                return row.state === 'succeeded' || row.state === 'running'
+              })
+              const merged = kept.slice()
+              scan.rows.forEach(function (row) {
+                if (merged.some(function (item) { return item.name === row.name })) return
+                merged.push(row)
+              })
+              merged.sort(function (a, b) { return a.name.localeCompare(b.name) })
+              return merged
+            })
             setMessage('')
             phaseRef.current = 'ready'
             if (scan.rows.length === 0 && scan.stats && scan.stats.tried > 0 && scan.stats.failed === scan.stats.tried) {
@@ -2805,6 +2918,8 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
             if (targets.length === 0) return
             setBusy(true)
             setMessage('')
+            let restarts = 0
+            let refreshes = 0
             for (let index = 0; index < targets.length; index += 1) {
               const name = targets[index].name
               patch(name, { state: 'running', percent: null, detail: '' })
@@ -2817,8 +2932,15 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
                   })
                 })
                 const ok = operation && operation.state === 'succeeded'
+                /* How the update lands decides what the user has to do next:
+                 * a host-side change only applies at the next start, while a
+                 * client bundle is enough to reload the page for. */
+                const needs = !ok ? '' : operation && operation.restartRequired ? 'restart' : 'refresh'
+                if (needs === 'restart') restarts += 1
+                else if (needs === 'refresh') refreshes += 1
                 patch(name, {
                   state: ok ? 'succeeded' : 'failed',
+                  needs: needs,
                   percent: 100,
                   done: ok
                     ? { from: targets[index].from, to: (operation && operation.installedVersion) || targets[index].target.version }
@@ -2833,9 +2955,18 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
                 patch(name, { state: 'failed', percent: 100, detail: err.message })
               }
             }
+            /* The batch may outlive this mount: write the result to the shared
+             * run state unconditionally, or a remount would come back with the
+             * button stuck on "busy" forever. */
+            setBusy(false)
             if (alive.current) {
-              setBusy(false)
-              setMessage(translate('updates.reloadHint'))
+              setMessage(
+                restarts > 0
+                  ? translate('updates.needRestartHint').replace('{n}', String(restarts))
+                  : refreshes > 0
+                    ? translate('updates.needRefreshHint')
+                    : translate('updates.reloadHint'),
+              )
             }
             refreshUpdateBadge()
           }
@@ -2852,7 +2983,7 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
                 type: 'button',
                 className: 'dsuik-up-btn',
                 disabled: busy || phase === 'loading',
-                onClick: load,
+                onClick: function () { load(true) },
               }, phase === 'loading'
                 ? h('span', { className: 'dsuik-up-btnlabel' },
                     spinIcon(),
@@ -3074,11 +3205,9 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
                   h('span', null,
                     message ||
                       (clock >= 13
-                        ? translate('updates.pmTimeout')
-                            .replace('{remote}', pluginManager() ? 'yes' : 'no')
-                            .replace('{ms}', String(clock))
+                        ? translate('updates.pmTimeout').replace('{ms}', String(clock))
                         : clock >= 4
-                          ? translate('updates.pmWaiting').replace('{remote}', pluginManager() ? 'yes' : 'no')
+                          ? translate('updates.pmWaiting')
                           : translate('updates.loadingDetail'))))
               : null,
             phase === 'ready'
@@ -3089,6 +3218,9 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
             /* The ready area stays on screen even when it is empty, so the page
              * always answers "is there anything for me?" instead of going blank. */
             phase === 'ready' ? sectionArea('updates.section.ready', groups.ready, false, null, true) : null,
+            /* The closing hint belongs to the batch it talks about: right under the
+             * rows you just updated, not after two unrelated sections. */
+            phase === 'ready' && message ? h('p', { className: 'dsuik-up-note is-after-ready' }, message) : null,
             phase === 'ready' ? sectionArea('updates.section.waiting', groups.waiting, true, 'updates.section.waitingHint', false) : null,
             phase === 'ready'
               ? sectionArea(
@@ -3102,7 +3234,6 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
                   false,
                 )
               : null,
-            message && phase !== 'error' ? h('p', { className: 'dsuik-up-note' }, message) : null,
           )
         }
 
@@ -3130,6 +3261,7 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
 .dsuik-up-section+.dsuik-up-section{margin-top:4px;padding-top:18px;border-top:1px solid var(--dsw-alias-border-l1);}
 .dsuik-up-section-title{margin:0;font-size:12.5px;font-weight:600;letter-spacing:.01em;color:var(--dsw-alias-label-primary);}
 .dsuik-up-section.is-muted .dsuik-up-row{opacity:.7;background:transparent;}
+.dsuik-up-note.is-after-ready{margin-top:-4px;}
 .dsuik-up-note.is-empty{padding:10px 12px;border:1px dashed var(--dsw-alias-border-l1);border-radius:10px;}
 .dsuik-up-loading{display:flex;align-items:center;justify-content:center;gap:8px;padding:34px 0 30px;font-size:13px;color:var(--dsw-alias-label-secondary);animation:dsuik-up-in .2s ease-out both;}
 @media (prefers-reduced-motion: reduce){.dsuik-up-section,.dsuik-up-row,.dsuik-up-loading{animation:none;}}
