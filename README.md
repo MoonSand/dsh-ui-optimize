@@ -41,9 +41,11 @@ The launcher follows the pattern of the community plugin [dsh-sidebar-shelf](htt
 
 The plugin page gets an **Updates** tab. It reads what is installed from the host's own plugin manager and each package's newest release and publish time from the npm registry — no marketplace plugin involved — then updates the whole eligible set with one click through that same host service.
 
-Only releases **published at least 24 hours ago** are installed. Anything younger is listed and skipped: a release published hours ago can still be withdrawn or patched, and the market's own fresh-release wait already encodes that. A release whose publish time cannot be read is skipped too — the rule cannot be confirmed, so it is not claimed. Progress, failure codes and per-package state come from the market's operation records, so an update this tab starts is the same operation the market itself would run, rollback included. Reload the page afterwards: the new client half only loads on a fresh page.
+Only releases **published at least 24 hours ago** are installed. Anything younger is listed with the time left and skipped: a release published hours ago can still be withdrawn or patched. A release whose publish time cannot be read is skipped too — the rule cannot be confirmed, so it is not claimed. Releases the host marks **incompatible with the running DSH version** (its `engines.dsh` or a DSH peer package is not satisfied) get their own section, state the version they need, and are never picked by *Update all* — so right after a DSH upgrade the tab tells you what is waiting on the plugins instead of failing mid-update.
 
-Without the market (or when the host answers 401/404), the tab says so and stays inert rather than pretending to check.
+Updates run through the host plugin manager, i.e. the same path the plugin page uses when you update one entry by hand; progress and failure codes come back from it. Reload the page afterwards: the new client half only loads on a fresh page.
+
+If the host's plugin manager is unavailable, the tab says so instead of pretending to check.
 
 ## Known limitations
 
