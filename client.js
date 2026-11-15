@@ -868,7 +868,18 @@ body:not([data-ds-dark-theme]) .dsuik-mc > .dsuik-mc-b{display:none;}
       const restartGate = featureGate('restart', env)
       /* The shelf also needs the slot API: without it the switch stays off and
        * says why, instead of offering something that cannot work. */
-      const sidebarGate = slotsCoreApi
+      /* What the shelf actually needs is the slots *service* (entriesOfSlot);
+       * the resolveSlotLabel helper is a bonus for nicer labels. Gating on the
+       * module alone disabled the switch on hosts that do not expose it. */
+      let slotsService = null
+      try {
+        slotsService = ctx.slots || (typeof ctx.get === 'function' ? ctx.get('slots') : null)
+      } catch (err) {
+        slotsService = null
+      }
+      const shelfReady =
+        (slotsService && typeof slotsService.entriesOfSlot === 'function') || slotsCoreApi !== null
+      const sidebarGate = shelfReady
         ? featureGate('sidebar', env)
         : { available: false, reason: translate('sidebar.unavailable') }
 
@@ -1563,6 +1574,11 @@ body:not([data-ds-dark-theme]) .dsuik-mc > .dsuik-mc-b{display:none;}
     const SHELF_ID = 'muik-panels'
     const SHELF_ATTR = 'data-muik-shelf'
     const SHELF_ROW_ATTR = 'data-muik-shelf-row'
+    /* The rows we need to hide live in the same list as our own row. Marking that
+     * list is nesting-proof: earlier builds nested it two levels below the
+     * sidebar root, newer ones deeper, and a fixed `> nav > *` selector silently
+     * stopped matching — which showed the whole menu twice. */
+    const SHELF_LIST_ATTR = 'data-muik-shelf-list'
 
     let slotsCoreApi = null
     try {
@@ -1580,6 +1596,7 @@ body:not([data-ds-dark-theme]) .dsuik-mc > .dsuik-mc-b{display:none;}
 
     const SHELF_CSS = `
 [${SHELF_ATTR}="on"] > nav > *:not([${SHELF_ROW_ATTR}]):not([data-muik-keep]){display:none!important}
+[${SHELF_LIST_ATTR}] > *:not([${SHELF_ROW_ATTR}]):not([data-muik-keep]){display:none!important}
 button.muik-shelf-row{display:flex;align-items:center;gap:10px;box-sizing:border-box;width:100%;height:36px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-primary,inherit);font:inherit;font-size:13px;text-align:left;cursor:pointer}
 button.muik-shelf-row:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12))}
 button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#4d6bfe);outline-offset:-2px}
@@ -1719,13 +1736,28 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
           // label itself, so the row to mark is that wrapper — not our glyph.
           const row = glyph && typeof glyph.closest === 'function' ? glyph.closest('button') : null
           if (!row) return undefined
-          const nav = row.parentElement
+          /* Newer shells wrap every row in its own element (`panelEntry` in
+           * 0.2.2-rc.3), so `row.parentElement` is a one-child wrapper, not the
+           * list. Walk up through single-child wrappers to find the real list:
+           * hiding that list's other children is what folds the menu. */
+          let entry = row
+          for (let depth = 0; depth < 5; depth += 1) {
+            const parent = entry.parentElement
+            if (!parent || parent.children.length !== 1) break
+            entry = parent
+          }
+          const list = entry.parentElement
+          const nav = list || row.parentElement
           const root = nav ? nav.parentElement : null
           if (!root) return undefined
           rowRef.current = row
           row.setAttribute(SHELF_ROW_ATTR, '')
+          /* The wrapper has to survive too: hiding it would take our row with it. */
+          if (entry !== row) entry.setAttribute(SHELF_ROW_ATTR, '')
           row.style.display = enabled ? '' : 'none'
           root.setAttribute(SHELF_ATTR, enabled ? 'on' : 'off')
+          if (enabled) nav.setAttribute(SHELF_LIST_ATTR, '')
+          else nav.removeAttribute(SHELF_LIST_ATTR)
 
           // The shell appends its own "More" row after the registered rows, and its
           // menu holds content that is not a panellist entry. Hiding that row would
@@ -1736,7 +1768,7 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
             if (actions.length > 0) {
               const kids = nav.children
               for (let i = kids.length - 1; i >= 0; i -= 1) {
-                if (kids[i] !== row) {
+                if (kids[i] !== row && kids[i] !== entry) {
                   keepRow = kids[i]
                   // Kept visible on purpose. The shell's More menu only opens from a
                   // trusted click: synthetic click(), full pointer sequences and a
