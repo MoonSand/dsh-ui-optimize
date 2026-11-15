@@ -131,6 +131,17 @@ window.__ModuleLoader__.load({
         'updates.section.ready': 'Ready to update',
         'updates.section.waiting': 'Not yet',
         'updates.section.waitingHint': 'Published less than 24 hours ago.',
+        'updates.section.pending': 'Needs a restart',
+        'updates.section.pendingHint': 'Loaded in the running host, so they cannot be replaced live. Update all handles it: DSH stops, the new versions are installed, and DSH starts again.',
+        'updates.section.pendingEmpty': 'Nothing needs a restart right now — everything installable has already been installed live.',
+        'updates.section.blocked': 'Not loadable on this DSH',
+        'updates.section.blockedHint': 'The running DSH version cannot load these releases. Upgrade DSH first, or wait for the plugin to publish a compatible one.',
+        'updates.compatTag': 'Needs {version}',
+        'updates.applyStarted': 'Installing {n} more that were loaded — DSH restarts when that finishes, so this page drops for a moment.',
+        'updates.applyFailed': 'Could not start the background install. Try again in a moment.',
+        'updates.pendingStarting': 'Stopping DSH, installing, then starting again — the page reconnects on its own.',
+        'updates.waitingRestart': 'waiting for restart',
+        'updates.compatTagUnknown': 'Not loadable on this DSH',
         'updates.queued': 'Queued',
         'updates.running': 'Updating',
         'updates.succeeded': 'Updated',
@@ -238,6 +249,17 @@ window.__ModuleLoader__.load({
         'updates.section.ready': '可更新',
         'updates.section.waiting': '暂不可更新',
         'updates.section.waitingHint': '发布不足 24 小时',
+        'updates.section.pending': '需停机更新',
+        'updates.section.pendingHint': '这些插件正运行在宿主里，宿主不允许直接替换已加载的模块。点「一键更新」就行：它会自动停掉 DSH、装好新版本，再启动。',
+        'updates.section.pendingEmpty': '当前没有需要停机安装的更新——能当场装的都已经装好了。',
+        'updates.section.blocked': '与当前 DSH 不兼容',
+        'updates.section.blockedHint': '当前运行的 DSH 版本加载不了这些版本。先升级 DSH，或等插件发布兼容版本。',
+        'updates.compatTag': '需要 {version}',
+        'updates.applyStarted': '另外 {n} 个正在运行的插件已开始安装——装完会自动重启 DSH，页面会短暂断开，稍后刷新即可。',
+        'updates.applyFailed': '后台安装没能启动，稍后再试一次。',
+        'updates.pendingStarting': '正在停掉 DSH 安装新版本，随后自动启动——页面会自己重连。',
+        'updates.waitingRestart': '等待重启',
+        'updates.compatTagUnknown': '与当前 DSH 不兼容',
         'updates.queued': '排队中',
         'updates.running': '更新中',
         'updates.succeeded': '已更新',
@@ -2353,6 +2375,7 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
                 stats.failed += 1
                 continue
               }
+              if (item.name === SELF_NAME) continue
               if (compareVersions(doc.latest, item.version) <= 0) continue
               const published = doc.time[doc.latest]
               const stamp = published === undefined ? NaN : Date.parse(published)
@@ -2362,8 +2385,13 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
                * and waiting for it before painting made an already-slow list feel
                * frozen. The compatibility verdict lands on the row a moment later. */
               const row = {
-                compat: null,
+                compat: compatBlocked.has(item.name) ? { runtime: '', required: '' } : null,
                 name: item.name,
+                /* An enabled bundle is loaded in the running host, and the host
+                 * refuses to replace a loaded module (`bundle-in-use`). Such a row
+                 * cannot be updated from here — it goes to the "restart required"
+                 * list with a command to run while DSH is stopped. */
+                enabled: item.enabled === true,
                 installed: item.version,
                 latest: doc.latest,
                 age: age,
@@ -2610,6 +2638,7 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
 
         function updateLabel(row) {
           if (row.state === 'running') return translate('updates.running')
+          if (row.state === 'applied') return translate('updates.waitingRestart')
           if (row.state === 'succeeded') return translate('updates.succeeded')
           if (row.state === 'failed') return translate('updates.failed')
           if (row.age === undefined) return translate('updates.readingAge')
@@ -2647,8 +2676,11 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
               const fallbackOn = store.state.updatesFallback === true
               /* Same rule as the list: a fallback row counts only when the
                * previous release is actually newer than what is installed. */
+              /* Same rule as the button: a row the running DSH cannot load is not
+               * something the user can act on, so it must not inflate the badge. */
               updateBadge.set(
                 scan.rows.filter(function (row) {
+                  if (row.compat) return false
                   if (typeof row.age === 'number' && row.age >= FRESH_RELEASE_MS) return true
                   if (!fallbackOn || !row.fallbackVersion) return false
                   return compareVersions(row.fallbackVersion, row.installed) > 0
@@ -2692,6 +2724,25 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
 
         /* Progress lives outside the component: switching tabs unmounts it,
          * and an install that is still running must not vanish with the view. */
+        /* Versions the host rejected at install time because the running DSH cannot
+         * load them. Remembered so the row lands in the incompatibility section
+         * instead of offering the same doomed update on every rescan. */
+        /* This plugin is running the very page that offers the update: a bundle
+         * cannot replace itself while it is loaded, so it never enters the list. */
+        const SELF_NAME = '@moonsand/dsh-ui-optimize'
+
+        const COMPAT_KEY = 'dsh-ui-optimize:compat-blocked'
+        const compatBlocked = new Set()
+        try {
+          const saved = window.localStorage.getItem(COMPAT_KEY)
+          if (saved) JSON.parse(saved).forEach(function (name) { compatBlocked.add(String(name)) })
+        } catch (err) { /* private mode or bad json: start empty */ }
+        function rememberCompatBlocked(name) {
+          if (compatBlocked.has(name)) return
+          compatBlocked.add(name)
+          try { window.localStorage.setItem(COMPAT_KEY, JSON.stringify([...compatBlocked])) } catch (err) { /* ignore */ }
+        }
+
         const updateRun = {
           rows: [],
           checked: 0,
@@ -2723,6 +2774,7 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
             setPhase(next)
           }
           const [run, setRun] = React.useState(updateRun.snapshot())
+          /* Which command was just copied, so the button can say so briefly. */
           const rows = run.rows
           const checked = run.checked
           const busy = run.busy
@@ -2770,6 +2822,28 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
             }
           }, [])
 
+          React.useEffect(function () {
+            /* Restarting DSH swaps the process under this page without reloading
+             * it, so nothing would ever re-scan: the tab would keep showing rows
+             * from the old process until the user switched tabs. Revalidate on a
+             * slow timer, and immediately when the page comes back into view. */
+            function revalidate() {
+              if (document.visibilityState !== 'visible') return
+              if (store.state.updates === false) return
+              load().catch(function (err) {
+                console.warn('[dsh-ui-optimize] revalidate failed', err)
+              })
+            }
+            const timer = setInterval(revalidate, 60000)
+            document.addEventListener('visibilitychange', revalidate)
+            window.addEventListener('focus', revalidate)
+            return function () {
+              clearInterval(timer)
+              document.removeEventListener('visibilitychange', revalidate)
+              window.removeEventListener('focus', revalidate)
+            }
+          }, [])
+
           function patch(name, changes) {
             setRows(function (previous) {
               return previous.map(function (row) {
@@ -2779,6 +2853,9 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
           }
 
           async function load(force) {
+            /* The previous run's verdict ("refresh to apply") must not sit under a
+             * list that has just been re-read and shows nothing to do. */
+            if (updateRun.busy !== true) setMessage('')
             /* "Check again" has to mean it: the cached scan would answer
              * instantly and the button would look broken. */
             if (force === true) {
@@ -2799,7 +2876,11 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
              * opening the tab always re-checks, but never blanks the list or makes
              * the user press "Check again" to see current numbers. */
             const warm = scanCache.value && Date.now() - scanCache.at < SCAN_CACHE_MS ? scanCache.value : null
-            const carried = updateRun.rows.filter(function (row) { return row.state === 'succeeded' })
+            /* Only in-flight rows survive a rescan. Finished ones used to be
+             * carried over as well, which left a green "updated" card sitting in
+             * the list forever — the scan already says it is up to date, so the
+             * card no longer belongs anywhere. */
+            const carried = updateRun.rows.filter(function (row) { return row.state === 'running' })
             if (warm) {
               const merged = carried.slice()
               warm.rows.forEach(function (row) {
@@ -2894,7 +2975,10 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
             return null
           }
 
-          /* The version this row will actually end up on — the changelog range has
+          /* Rows the running host refuses to replace (`bundle-in-use`) are not
+           * errors, they are work for the next start: we hand over the exact
+           * command instead of pretending we can install them live. */
+/* The version this row will actually end up on — the changelog range has
            * to stop there, otherwise a fallback row would list changes for a
            * release it is deliberately not installing today. */
           function targetVersion(row) {
@@ -2902,20 +2986,83 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
             return target ? target.version : row.latest
           }
 
+          /* Declared before the badge effect: that effect's dependency array is
+           * evaluated during render, so a later declaration would be a TDZ hit. */
+          const pendingCount = rows.filter(function (row) {
+            return row.enabled === true && row.state !== 'running' && targetOf(row) !== null
+          }).length
+
           const eligible = rows.filter(function (row) {
-            return row.state !== 'succeeded' && targetOf(row) !== null
+            /* 'applied' means the host already queued this package and is about to
+             * restart DSH; offering it again would only spend another round trip. */
+            return row.state !== 'succeeded' && row.state !== 'applied' && targetOf(row) !== null && row.enabled !== true
           })
 
           React.useEffect(function () {
-            updateBadge.set(eligible.length)
-          }, [eligible.length])
+            updateBadge.set(eligible.length + pendingCount)
+          }, [eligible.length, pendingCount])
+
+          /* Rows the host refuses to replace while it is running go to the plugin's
+           * host half: it pins them, then asks the fnOS gateway to restart DSH so
+           * the new versions are what actually loads. One click, one batch. */
+          async function applyPending(items) {
+            const body = {
+              packages: items.map(function (row) {
+                const target = targetOf(row)
+                return { name: row.name, version: (target && target.version) || row.latest }
+              }),
+            }
+            const candidates = []
+            try {
+              candidates.push(new URL('ui-optimize/desktop/apply', document.baseURI).href)
+            } catch (err) {
+              /* malformed baseURI: fall through to the root-relative URL */
+            }
+            candidates.push('/ui-optimize/desktop/apply')
+            let lastError = null
+            for (let i = 0; i < candidates.length; i += 1) {
+              try {
+                const response = await fetch(candidates[i], {
+                  method: 'POST',
+                  headers: { 'content-type': 'application/json', 'x-ui-optimize-apply': '1' },
+                  credentials: 'same-origin',
+                  cache: 'no-store',
+                  body: JSON.stringify(body),
+                  signal: AbortSignal.timeout(15000),
+                })
+                /* The NAS gateway answers unknown paths with 200 and a plain-text
+                 * "invalid token" body, so a 200 alone proves nothing: only a JSON
+                 * answer means the host route actually ran. */
+                const text = await response.text()
+                let payload = null
+                try {
+                  payload = JSON.parse(text)
+                } catch (err) {
+                  payload = null
+                }
+                if (payload === null) {
+                  lastError = new Error('HTTP ' + response.status + ' 非 JSON 应答')
+                  continue
+                }
+                if (!response.ok || payload.ok !== true) {
+                  lastError = new Error('HTTP ' + response.status + ' ' + String(payload.reason || ''))
+                  continue
+                }
+                return payload
+              } catch (err) {
+                lastError = err
+              }
+            }
+            throw lastError || new Error('apply endpoint unreachable')
+          }
 
           async function updateAll() {
             if (busy) return
+            const pendingRows = groups.pending.slice()
             const targets = eligible.map(function (row) {
               return { name: row.name, from: row.installed, target: targetOf(row) }
             })
-            if (targets.length === 0) return
+            if (targets.length === 0 && pendingRows.length === 0) return
             setBusy(true)
             setMessage('')
             let restarts = 0
@@ -2938,8 +3085,17 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
                 const needs = !ok ? '' : operation && operation.restartRequired ? 'restart' : 'refresh'
                 if (needs === 'restart') restarts += 1
                 else if (needs === 'refresh') refreshes += 1
+                /* The host reports code 'UPDATE_REJECTED' for several reasons and
+                 * puts the real one in `message` — matching only the code meant
+                 * this branch never ran and the doomed row kept coming back. */
+                const failureText = !ok && operation && operation.failure
+                  ? String(operation.failure.code || '') + ' ' + String(operation.failure.message || '')
+                  : ''
+                const blockedNow = /incompatible/i.test(failureText)
+                if (blockedNow) rememberCompatBlocked(name)
                 patch(name, {
                   state: ok ? 'succeeded' : 'failed',
+                  compat: blockedNow ? { runtime: '', required: '' } : undefined,
                   needs: needs,
                   percent: 100,
                   done: ok
@@ -2951,6 +3107,18 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
                       ? operation.failure.code + ' — ' + operation.failure.message
                       : (operation && operation.state) || 'failed',
                 })
+                /* The green confirmation is feedback, not a list entry: clear it
+                 * after a few seconds, otherwise it sits under a "0 updatable"
+                 * heading until the page is reloaded. */
+                if (ok) {
+                  setTimeout(function () {
+                    updateRun.set({
+                      rows: updateRun.rows.filter(function (item) {
+                        return !(item.name === name && item.state === 'succeeded')
+                      }),
+                    })
+                  }, 10000)
+                }
               } catch (err) {
                 patch(name, { state: 'failed', percent: 100, detail: err.message })
               }
@@ -2958,19 +3126,45 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
             /* The batch may outlive this mount: write the result to the shared
              * run state unconditionally, or a remount would come back with the
              * button stuck on "busy" forever. */
+            let appliedPending = 0
+            let applyFailed = false
+            let applyError = ''
+            if (pendingRows.length > 0) {
+              try {
+                await applyPending(pendingRows)
+                appliedPending = pendingRows.length
+                /* The host answers 202 before pnpm starts, so show the batch as in
+                 * flight right away — otherwise the click looks like a no-op until
+                 * the page reloads under the new DSH process. */
+                pendingRows.forEach(function (row) {
+                  patch(row.name, { state: 'applied', percent: null, detail: translate('updates.pendingStarting') })
+                })
+              } catch (err) {
+                applyFailed = true
+                applyError = err && err.message ? String(err.message) : String(err)
+              }
+            }
             setBusy(false)
             if (alive.current) {
-              setMessage(
-                restarts > 0
-                  ? translate('updates.needRestartHint').replace('{n}', String(restarts))
-                  : refreshes > 0
-                    ? translate('updates.needRefreshHint')
-                    : translate('updates.reloadHint'),
-              )
+              if (applyFailed) {
+                setMessage(translate('updates.applyFailed') + (applyError ? '（' + applyError + '）' : ''))
+              } else if (appliedPending > 0) {
+                setMessage(translate('updates.applyStarted').replace('{n}', String(appliedPending)))
+              } else {
+                setMessage(
+                  restarts > 0
+                    ? translate('updates.needRestartHint').replace('{n}', String(restarts))
+                    : refreshes > 0
+                      ? translate('updates.needRefreshHint')
+                      : translate('updates.reloadHint'),
+                )
+              }
             }
             refreshUpdateBadge()
           }
 
+          /* The header is built before the grouping below, so the pending count it
+           * shows has to be computed here with the same rule the section uses. */
           const header = h(
             'div',
             { className: 'dsuik-up-header' },
@@ -2992,9 +3186,13 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
               h('button', {
                 type: 'button',
                 className: 'dsuik-up-btn is-primary',
-                disabled: busy || phase !== 'ready' || eligible.length === 0,
+                /* One button covers both batches: what the host can replace now,
+                 * plus what it will replace on the next start. */
+                disabled: busy || phase !== 'ready' || eligible.length + pendingCount === 0,
                 onClick: updateAll,
-              }, busy ? translate('updates.updating') : translate('updates.updateAll') + ' (' + String(eligible.length) + ')'),
+              }, busy
+                ? translate('updates.updating')
+                : translate('updates.updateAll') + ' (' + String(eligible.length + pendingCount) + ')'),
             ),
           )
 
@@ -3086,7 +3284,10 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
             /* A running or finished row speaks with its state, not with the plan:
              * the "previous release" tag belongs to a row that has not started yet,
              * otherwise 更新中 never gets a chance to show. */
-            const label = idle ? (quiet || usingFallback ? '' : updateLabel(row)) : updateLabel(row)
+            /* A row the host cannot load is not a failed update to retry: it reads
+             * as one fact ("this DSH cannot load it"), with the raw failure code
+             * left in the log rather than on the card. */
+            const label = row.compat ? '' : (idle ? (quiet || usingFallback ? '' : updateLabel(row)) : updateLabel(row))
             /* Nothing to install yet: say how far the nearest candidate is, so a
              * row that is "waiting" does not look like the plugin forgot it.
              * Only idle rows: a finished row must not read "已更新 · 剩余 5.1 小时". */
@@ -3104,7 +3305,7 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
                 className: 'dsuik-up-row'
                   + (row.state === 'running' ? ' is-running' : '')
                   + (row.state === 'succeeded' ? ' is-ok' : '')
-                  + (row.state === 'failed' ? ' is-fail' : '')
+                  + (row.state === 'failed' && !row.compat ? ' is-fail' : '')
                   + (isOpen ? ' is-open' : ''),
                 style: { animationDelay: String(Math.min(index, 12) * 18) + 'ms' },
               },
@@ -3141,11 +3342,13 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
                   soon ? h('span', { className: 'dsuik-up-soon' }, soon) : null,
                   label ? h('span', { className: 'dsuik-up-tag' }, label) : null,
                   fallbackShown ? h('span', { className: 'dsuik-up-tag', title: translate('updates.fallbackWhy') }, translate('updates.fallbackTag')) : null,
-                  row.compat && !row.state
+                  row.compat
                     ? h('span', { className: 'dsuik-up-tag is-warn', title: translate('updates.section.blockedHint') },
-                        translate('updates.compatTag').replace('{version}', String(row.compat.required || row.compat.runtime || '?')))
+                        row.compat.required || row.compat.runtime
+                          ? translate('updates.compatTag').replace('{version}', String(row.compat.required || row.compat.runtime))
+                          : translate('updates.compatTagUnknown'))
                     : null,
-                  row.detail ? h('span', { className: 'dsuik-up-detail' }, row.detail) : null,
+                  row.detail && !row.compat ? h('span', { className: 'dsuik-up-detail' }, row.detail) : null,
                 ),
                 h('span', { className: 'dsuik-up-chev', 'aria-hidden': 'true' }, isOpen ? '▾' : '▸'),
               ),
@@ -3161,14 +3364,15 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
 
           /* Two areas: everything the 24-hour rule lets us touch on top, the rest
            * below it, so the button above always matches the list above. */
-          const groups = { ready: [], blocked: [], waiting: [] }
+          const groups = { ready: [], pending: [], blocked: [], waiting: [] }
           rows.forEach(function (row) {
             /* A row we are actively installing belongs with the rows you can act
              * on, even when its release is still inside the 24-hour window —
              * otherwise a forced update disappears into the "waiting" list while
              * its progress bar is still moving. */
             const ready = row.state === 'succeeded' || row.state === 'running' || targetOf(row) !== null
-            if (ready) groups.ready.push(row)
+            if (row.enabled === true && row.state !== 'running' && targetOf(row) !== null) groups.pending.push(row)
+            else if (ready) groups.ready.push(row)
             else if (row.compat && row.state !== 'succeeded') groups.blocked.push(row)
             else groups.waiting.push(row)
           })
@@ -3186,14 +3390,15 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
            * "30 checked" next to ten visible rows reads like a failed scan. */
           const upToDate = Math.max(0, checked - rows.length)
 
-          function sectionArea(titleKey, items, muted, hintKey, always) {
+          function sectionArea(titleKey, items, muted, hintKey, always, count) {
             if (items.length === 0 && !always) return null
+            const shown = typeof count === 'number' ? count : items.length
             return h(
               'section',
               { className: 'dsuik-up-section' + (muted ? ' is-muted' : '') },
               h('div', { className: 'dsuik-up-section-head' },
                 h('p', { className: 'dsuik-up-section-title' },
-                  translate(titleKey) + ' (' + String(items.length) + ')'),
+                  translate(titleKey) + ' (' + String(shown) + ')'),
                 hintKey
                   ? h('p', { className: 'dsuik-up-section-hint' },
                       hintKey.indexOf('updates.') === 0 ? translate(hintKey) : hintKey)
@@ -3230,10 +3435,28 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
               : null,
             /* The ready area stays on screen even when it is empty, so the page
              * always answers "is there anything for me?" instead of going blank. */
-            phase === 'ready' ? sectionArea('updates.section.ready', groups.ready, false, null, true) : null,
+            phase === 'ready'
+              ? sectionArea(
+                  'updates.section.ready',
+                  groups.ready,
+                  false,
+                  null,
+                  true,
+                  groups.ready.filter(function (row) { return row.state !== 'succeeded' }).length,
+                )
+              : null,
             /* The closing hint belongs to the batch it talks about: right under the
              * rows you just updated, not after two unrelated sections. */
             phase === 'ready' && message ? h('p', { className: 'dsuik-up-note is-after-ready' }, message) : null,
+            phase === 'ready'
+              ? sectionArea(
+                  'updates.section.pending',
+                  groups.pending,
+                  true,
+                  groups.pending.length > 0 ? 'updates.section.pendingHint' : 'updates.section.pendingEmpty',
+                  true,
+                )
+              : null,
             phase === 'ready' ? sectionArea('updates.section.waiting', groups.waiting, true, 'updates.section.waitingHint', false) : null,
             phase === 'ready'
               ? sectionArea(

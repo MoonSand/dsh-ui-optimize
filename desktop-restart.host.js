@@ -29,7 +29,7 @@
  * @module @moonsand/dsh-desktop-restart
  */
 import { spawn } from 'node:child_process'
-import { existsSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -51,6 +51,17 @@ const STATUS_PATH = `${PREFIX}/status`
 
 /** Arming self-test: arms a watchdog without killing anything, and reports the outcome. */
 const DIAGNOSE_PATH = `${PREFIX}/diagnose`
+
+/** Install the packages the running host refuses to replace. The child process
+ *  does the pnpm run *after* this reply flushes, then asks the fnOS gateway to
+ *  restart DSH so the new versions are what actually loads. */
+const APPLY_PATH = `${PREFIX}/apply`
+
+/** Where the detached apply run keeps its log and backups. */
+const APPLY_DIR = join(process.env.DSH_HOME || tmpdir(), '.ui-optimize')
+
+/** Registry pinned to the public one: the machine default is a read-only mirror. */
+const APPLY_REGISTRY = 'https://registry.npmjs.org/'
 
 /** Milliseconds the helper waits before arming, so the reply can flush. */
 const RESTART_LEAD_MS = 300
@@ -595,8 +606,46 @@ function launchRestartHelper(executable, mode = 'restart') {
  * @param request - Node request.
  * @returns true when the caller is this application's own page.
  */
+function trustedHostName(host) {
+  const name = String(host || '').trim().toLowerCase().replace(/^\[|\]$/g, '').split(':')[0]
+  if (name === '' || name === undefined) return false
+  if (name === '127.0.0.1' || name === 'localhost' || name === '::1') return true
+  const configured = String(process.env.DSH_TRUSTED_HOSTS || '')
+    .split(',')
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean)
+  return configured.includes(name)
+}
+
+/**
+ * Whether the caller may restart this application.
+ *
+ * Three shapes are accepted.
+ *  1. The desktop shell's own marker header.
+ *  2. The page's apply header: a cross-origin page cannot set it without a preflight, and
+ *     none of these routes answer CORS headers.
+ *  3. A page served by this Host (or by the NAS gateway in front of it): `Origin` and
+ *     `Host` name the same trusted host. Browsers always send both, so the old
+ *     "no Host and no Origin" loopback rule never matched a real page — a gateway that
+ *     strips the custom header left the button dead.
+ *
+ * @param request - Node request.
+ * @returns true when the caller is this application's own page.
+ */
 function sameOriginCaller(request) {
   if (request.headers['x-dsh-desktop-restart'] === '1') return true
+  /* The page's own apply call carries this header. A cross-origin page cannot set
+   * it without a preflight, and this route answers no CORS headers. */
+  if (request.headers['x-ui-optimize-apply'] === '1') return true
+  const origin = request.headers.origin
+  const host = request.headers.host
+  if (typeof origin === 'string' && typeof host === 'string') {
+    try {
+      if (new URL(origin).host === host && trustedHostName(host)) return true
+    } catch (error) {
+      /* An unparsable Origin is treated as foreign. */
+    }
+  }
   if (request.headers.host !== undefined || request.headers.origin !== undefined) return false
   if (request.headers.forwarded !== undefined) return false
   const address = request.socket.remoteAddress
@@ -644,6 +693,74 @@ async function waitForArmStatus(deadlineMs) {
  * @param request - Node request.
  * @param response - Node response.
  */
+const SPEC_NAME = /^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/i
+const SPEC_VERSION = /^\d+\.\d+\.\d+(?:-[0-9a-z.-]+)?$/i
+
+/** Read `{ packages: [{ name, version }] }` and turn it into `name@version` specs.
+ *  Everything is validated here: the values end up in a shell script. */
+function parseApplyBody(body) {
+  let parsed
+  try {
+    parsed = JSON.parse(body || '{}')
+  } catch {
+    throw new Error('body is not JSON')
+  }
+  const list = Array.isArray(parsed.packages) ? parsed.packages : []
+  if (list.length === 0) throw new Error('packages is empty')
+  if (list.length > 40) throw new Error('too many packages')
+  const seen = new Set()
+  const specs = []
+  for (const item of list) {
+    const name = typeof item?.name === 'string' ? item.name.trim() : ''
+    const version = typeof item?.version === 'string' ? item.version.trim() : ''
+    if (!SPEC_NAME.test(name)) throw new Error('bad package name: ' + name)
+    if (!SPEC_VERSION.test(version)) throw new Error('bad version: ' + version)
+    const spec = name + '@' + version
+    if (seen.has(spec)) continue
+    seen.add(spec)
+    specs.push(spec)
+  }
+  if (specs.length === 0) throw new Error('packages is empty')
+  return specs
+}
+
+/** Write the detached apply script and return its path. The script installs the
+ *  pinned versions, rolls back both files when pnpm fails, and only then asks the
+ *  fnOS gateway to restart DSH — so a failure leaves the old versions in place. */
+function writeApplyScript(specs) {
+  mkdirSync(APPLY_DIR, { recursive: true })
+  const profile = join(process.env.DSH_HOME || '', 'profiles', 'web')
+  const script = join(APPLY_DIR, 'apply.sh')
+  const log = join(APPLY_DIR, 'apply.log')
+  const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)
+  const lines = [
+    '#!/bin/bash',
+    'set -u',
+    'exec >>' + JSON.stringify(log) + ' 2>&1',
+    'echo "== $(date -Is) apply start =="',
+    'cd ' + JSON.stringify(profile) + ' || { echo "no profile dir"; exit 1; }',
+    'cp -p package.json package.json.bak-' + stamp,
+    'cp -p pnpm-lock.yaml pnpm-lock.yaml.bak-' + stamp + ' 2>/dev/null || true',
+    'sleep 1',
+    '/vol1/@apphome/fn-deepseek-harness/.npm-global/bin/pnpm add ' +
+      specs.map((spec) => JSON.stringify(spec)).join(' ') +
+      ' --registry=' + APPLY_REGISTRY,
+    'rc=$?',
+    'if [ $rc -ne 0 ]; then',
+    '  echo "pnpm failed rc=$rc — rolling back"',
+    '  cp -p package.json.bak-' + stamp + ' package.json',
+    '  cp -p pnpm-lock.yaml.bak-' + stamp + ' pnpm-lock.yaml 2>/dev/null || true',
+    'else',
+    '  echo "pnpm ok — asking the gateway to restart DSH"',
+    '  curl -sS -m 20 --unix-socket ' + JSON.stringify(process.env.DSH_GATEWAY_SOCK || '/vol1/@appcenter/fn-deepseek-harness/app.sock') +
+      ' -X POST -H "x-requested-with: fetch" -H "x-trim-isadmin: true" http://localhost/__fnos-gateway/control/web/restart >/dev/null 2>&1 || echo "restart request failed"',
+    'fi',
+    'echo "== $(date -Is) apply done (rc=$rc) =="',
+  ]
+  writeFileSync(script, lines.join('\n') + '\n', { mode: 0o700 })
+  return script
+}
+
 async function handleRequest(ctx, request, response) {
   const reply = (status, body) => {
     response.writeHead(status, {
@@ -690,6 +807,37 @@ async function handleRequest(ctx, request, response) {
       diagnostic: status ?? { armed: false, reason: 'helper did not report in time' },
       logPath: HELPER_LOG_PATH,
     })
+  }
+  if (pathname === APPLY_PATH) {
+    if (request.method !== 'POST') return reply(405, { ok: false, reason: 'method-not-allowed' })
+    if (!sameOriginCaller(request)) return reply(403, { ok: false, reason: 'cross-origin' })
+    let body = ''
+    for await (const chunk of request) {
+      body += chunk
+      if (body.length > 64 * 1024) return reply(413, { ok: false, reason: 'too-large' })
+    }
+    let specs
+    try {
+      specs = parseApplyBody(body)
+    } catch (error) {
+      return reply(400, {
+        ok: false,
+        reason: 'bad-request',
+        message: error instanceof Error ? error.message : String(error),
+      })
+    }
+    try {
+      const script = writeApplyScript(specs)
+      const child = spawn('/bin/bash', [script], { detached: true, stdio: 'ignore' })
+      child.unref()
+      return reply(202, { ok: true, specs: specs.length, logPath: join(APPLY_DIR, 'apply.log') })
+    } catch (error) {
+      return reply(500, {
+        ok: false,
+        reason: 'spawn-failed',
+        message: error instanceof Error ? error.message : String(error),
+      })
+    }
   }
   if (pathname !== RESTART_PATH) return reply(404, { ok: false, reason: 'not-found' })
   if (request.method !== 'POST') return reply(405, { ok: false, reason: 'method-not-allowed' })
