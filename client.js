@@ -137,6 +137,8 @@ window.__ModuleLoader__.load({
         'updates.section.blocked': 'Not loadable on this DSH',
         'updates.section.blockedHint': 'The running DSH version cannot load these releases. Upgrade DSH first, or wait for the plugin to publish a compatible one.',
         'updates.compatTag': 'Needs {version}',
+        'updates.pendingUnsupported':
+          'This host is not Linux ({platform}), so DSH cannot be stopped from here. While DSH is stopped, run: {command}',
         'updates.applyStarted': '{n} loaded plugin(s) are queued: DSH stops once, installs the whole batch, then starts once — not one restart per plugin. The page reconnects on its own.',
         'updates.applyFailed': 'Could not start the background install. Try again in a moment.',
         'updates.waitingRestart': 'waiting for restart',
@@ -254,6 +256,8 @@ window.__ModuleLoader__.load({
         'updates.section.blocked': '与当前 DSH 不兼容',
         'updates.section.blockedHint': '当前运行的 DSH 版本加载不了这些版本。先升级 DSH，或等插件发布兼容版本。',
         'updates.compatTag': '需要 {version}',
+        'updates.pendingUnsupported':
+          '这个宿主不是 Linux（{platform}），没法从这里停机安装。请在 DSH 停止时手动执行：{command}',
         'updates.applyStarted': '{n} 个插件正在运行的，会一起停机安装：DSH 先退出、这批一次装完、再启动一次（不是每个插件重启一遍）。装完页面会自动重连。',
         'updates.applyFailed': '后台安装没能启动，稍后再试一次。',
         'updates.waitingRestart': '等待重启',
@@ -3093,6 +3097,14 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
                   continue
                 }
                 if (!response.ok || payload.ok !== true) {
+                  /* A non-Linux host cannot run the staged helper at all; carry the
+                   * reason up so the panel can print the manual command instead of a
+                   * bare HTTP code the user can do nothing with. */
+                  if (payload.reason === 'unsupported-platform') {
+                    const error = new Error('unsupported-platform')
+                    error.unsupportedPlatform = String(payload.platform || '')
+                    throw error
+                  }
                   lastError = new Error('HTTP ' + response.status + ' ' + String(payload.reason || ''))
                   continue
                 }
@@ -3193,7 +3205,17 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
                 })
               } catch (err) {
                 applyFailed = true
-                applyError = err && err.message ? String(err.message) : String(err)
+                if (err && err.unsupportedPlatform !== undefined) {
+                  const command = 'pnpm add ' + pendingRows.map(function (row) {
+                    const target = targetOf(row)
+                    return row.name + '@' + String((target && target.version) || row.latest)
+                  }).join(' ')
+                  applyError = translate('updates.pendingUnsupported')
+                    .replace('{platform}', String(err.unsupportedPlatform || 'unknown'))
+                    .replace('{command}', command)
+                } else {
+                  applyError = err && err.message ? String(err.message) : String(err)
+                }
               }
             }
             setBusy(false)

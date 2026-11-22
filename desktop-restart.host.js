@@ -29,7 +29,7 @@
  * @module @moonsand/dsh-desktop-restart
  */
 import { spawn } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -761,6 +761,69 @@ function writeApplyScript(specs) {
   return script
 }
 
+/**
+ * Windows (the desktop app) has no POSIX shell, so the staged helper is written as a
+ * plain Node script instead and started with this very executable. Same contract:
+ * back up the manifests, `pnpm add` the batch, roll back on failure, restart only on
+ * success — the difference is that the restart goes through our own HTTP route, since
+ * the fnOS gateway socket does not exist here.
+ */
+function writeApplyNodeScript(specs, port) {
+  mkdirSync(APPLY_DIR, { recursive: true })
+  const profile = join(process.env.DSH_HOME || '', 'profiles', 'web')
+  const script = join(APPLY_DIR, 'apply.mjs')
+  const log = join(APPLY_DIR, 'apply.log')
+  const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)
+  const body = `import { spawnSync } from 'node:child_process'
+import { appendFileSync, copyFileSync, existsSync } from 'node:fs'
+import { join } from 'node:path'
+
+const log = ${JSON.stringify(log)}
+const profile = ${JSON.stringify(profile)}
+const specs = ${JSON.stringify(specs)}
+const stamp = ${JSON.stringify(stamp)}
+const port = ${JSON.stringify(String(port))}
+const say = (line) => appendFileSync(log, line + '\\n')
+
+say('== ' + new Date().toISOString() + ' apply start (node) ==')
+const pkg = join(profile, 'package.json')
+const lock = join(profile, 'pnpm-lock.yaml')
+copyFileSync(pkg, pkg + '.bak-' + stamp)
+if (existsSync(lock)) copyFileSync(lock, lock + '.bak-' + stamp)
+
+const useShell = process.platform === 'win32'
+const bin = useShell ? 'pnpm.cmd' : 'pnpm'
+const result = spawnSync(bin, ['add', ...specs, '--registry=' + ${JSON.stringify('https://registry.npmjs.org/')}], {
+  cwd: profile,
+  shell: useShell,
+  encoding: 'utf8',
+})
+
+say((result.stdout || '') + (result.stderr || ''))
+if (result.status !== 0) {
+  say('pnpm failed rc=' + String(result.status) + ' — rolling back')
+  copyFileSync(pkg + '.bak-' + stamp, pkg)
+  if (existsSync(lock + '.bak-' + stamp)) copyFileSync(lock + '.bak-' + stamp, lock)
+  say('== ' + new Date().toISOString() + ' apply done (rolled back) ==')
+  process.exit(1)
+}
+
+say('pnpm ok — asking DSH to restart')
+try {
+  const response = await fetch('http://127.0.0.1:' + port + '/ui-optimize/desktop/restart', {
+    method: 'POST',
+    headers: { 'x-ui-optimize-apply': '1' },
+  })
+  say('restart response ' + response.status)
+} catch (error) {
+  say('restart request failed: ' + String(error && error.message ? error.message : error))
+}
+say('== ' + new Date().toISOString() + ' apply done ==')
+`
+  writeFileSync(script, body, { mode: 0o700 })
+  return script
+}
+
 async function handleRequest(ctx, request, response) {
   const reply = (status, body) => {
     response.writeHead(status, {
@@ -827,8 +890,31 @@ async function handleRequest(ctx, request, response) {
       })
     }
     try {
-      const script = writeApplyScript(specs)
-      const child = spawn('/bin/bash', [script], { detached: true, stdio: 'ignore' })
+      // Two shapes, one contract: Linux stages a bash script and asks the fnOS gateway
+      // socket to restart; Windows (the desktop app) stages a Node script and restarts
+      // through our own HTTP route. Anything else refuses instead of guessing.
+      const windows = process.platform === 'win32'
+      const script = windows
+        ? writeApplyNodeScript(specs, process.env.DSH_UPSTREAM_PORT || '3080')
+        : writeApplyScript(specs)
+      const child = windows
+        ? spawn(process.execPath, [script], {
+            detached: true,
+            stdio: 'ignore',
+            env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+          })
+        : spawn('/bin/bash', [script], { detached: true, stdio: 'ignore' })
+      // Never let a failed exec kill the host: without this listener Node rethrows.
+      child.on('error', function (error) {
+        try {
+          appendFileSync(
+            join(APPLY_DIR, 'apply.log'),
+            '== ' + new Date().toISOString() + ' spawn failed: ' + (error && error.message ? error.message : String(error)) + ' ==\n',
+          )
+        } catch {
+          /* logging must never be the thing that breaks the request */
+        }
+      })
       child.unref()
       return reply(202, { ok: true, specs: specs.length, logPath: join(APPLY_DIR, 'apply.log') })
     } catch (error) {

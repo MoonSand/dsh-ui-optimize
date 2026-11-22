@@ -43,7 +43,7 @@ The plugin page gets an **Updates** tab. It reads what is installed from the hos
 
 Only releases **published at least 24 hours ago** are installed. Anything younger is listed with the time left and skipped: a release published hours ago can still be withdrawn or patched. A release whose publish time cannot be read is skipped too — the rule cannot be confirmed, so it is not claimed. Releases the host marks **incompatible with the running DSH version** (its `engines.dsh` or a DSH peer package is not satisfied) get their own section, state the version they need, and are never picked by *Update all* — so right after a DSH upgrade the tab tells you what is waiting on the plugins instead of failing mid-update.
 
-Updates run through the host plugin manager, i.e. the same path the plugin page uses when you update one entry by hand; progress and failure codes come back from it. Reload the page afterwards: the new client half only loads on a fresh page.
+Updates run through the host plugin manager, i.e. the same path the plugin page uses when you update one entry by hand; progress and failure codes come back from it. Releases that are already loaded cannot be swapped in a running host, so that batch is staged instead: on the Linux host DSH stops once, the batch is installed with pnpm, and DSH starts again; in the desktop app the same batch is installed while the app restarts itself. Reload the page afterwards: the new client half only loads on a fresh page.
 
 If the host's plugin manager is unavailable, the tab says so instead of pretending to check.
 
