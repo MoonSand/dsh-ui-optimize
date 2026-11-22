@@ -140,6 +140,8 @@ window.__ModuleLoader__.load({
         'updates.pendingUnsupported':
           'This host is not Linux ({platform}), so DSH cannot be stopped from here. While DSH is stopped, run: {command}',
         'updates.applyStarted': '{n} loaded plugin(s) are queued: DSH stops once, installs the whole batch, then starts once — not one restart per plugin. The page reconnects on its own.',
+        'updates.logTitle': 'Install log — the batch runs in the background, this is its own output',
+        'updates.logWaiting': 'Waiting for the installer to write its first line…',
         'updates.applyFailed': 'Could not start the background install. Try again in a moment.',
         'updates.waitingRestart': 'waiting for restart',
         'updates.compatTagUnknown': 'Not loadable on this DSH',
@@ -259,6 +261,8 @@ window.__ModuleLoader__.load({
         'updates.pendingUnsupported':
           '这个宿主不是 Linux（{platform}），没法从这里停机安装。请在 DSH 停止时手动执行：{command}',
         'updates.applyStarted': '{n} 个插件正在运行的，会一起停机安装：DSH 先退出、这批一次装完、再启动一次（不是每个插件重启一遍）。装完页面会自动重连。',
+        'updates.logTitle': '安装日志——这批在后台跑，下面是它自己的输出',
+        'updates.logWaiting': '等安装脚本写出第一行……',
         'updates.applyFailed': '后台安装没能启动，稍后再试一次。',
         'updates.waitingRestart': '等待重启',
         'updates.compatTagUnknown': '与当前 DSH 不兼容',
@@ -2816,6 +2820,35 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
           }
         }
 
+        /* The restart batch runs pnpm inside a detached child, so the only progress it
+         * can honestly report is its own log. Same URL discipline as every other route:
+         * try the base-URI-relative form first (reverse proxies rewrite the root), and
+         * require real JSON — the fnOS gateway answers unknown paths with 200 + text. */
+        async function readApplyLog() {
+          const candidates = []
+          try {
+            candidates.push(new URL('ui-optimize/desktop/apply/log', document.baseURI).toString())
+          } catch {
+            /* baseURI can be opaque in tests; the absolute path below still works */
+          }
+          candidates.push('/ui-optimize/desktop/apply/log')
+          for (const url of candidates) {
+            try {
+              const response = await fetch(url, {
+                credentials: 'same-origin',
+                headers: { 'x-ui-optimize-apply': '1' },
+              })
+              if (!response.ok) continue
+              const text = await response.text()
+              const data = JSON.parse(text)
+              if (data && typeof data === 'object' && Array.isArray(data.lines)) return data
+            } catch {
+              /* try the next candidate */
+            }
+          }
+          return null
+        }
+
         function UpdatesTab() {
           const [phase, setPhase] = React.useState(updateRun.busy ? 'ready' : 'loading')
           /* Mirror of `phase` for timers: reading a ref avoids calling one
@@ -2836,6 +2869,35 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
           function setChecked(next) { updateRun.set({ checked: next }) }
           function setBusy(next) { updateRun.set({ busy: next }) }
           const [message, setMessage] = React.useState('')
+          const [pendingNote, setPendingNote] = React.useState('')
+          const [applyLog, setApplyLog] = React.useState([])
+          const [applyRunning, setApplyRunning] = React.useState(false)
+          /* A queued batch is "applied" until DSH restarts and the page reloads, which is
+           * a ~40 second silence. Poll its log so the click shows movement instead of a
+           * frozen list. */
+          const batchQueued = rows.some(function (row) { return row.state === 'applied' })
+          React.useEffect(function () {
+            if (!batchQueued) {
+              setApplyLog([])
+              setApplyRunning(false)
+              return undefined
+            }
+            let stopped = false
+            function tick() {
+              readApplyLog().then(function (data) {
+                if (!stopped && data) {
+                  setApplyLog(data.lines.slice(-8))
+                  setApplyRunning(data.running === true)
+                }
+              })
+            }
+            tick()
+            const timer = setInterval(tick, 1500)
+            return function () {
+              stopped = true
+              clearInterval(timer)
+            }
+          }, [batchQueued])
           const [open, setOpen] = React.useState({})
           const [notes, setNotes] = React.useState({})
           const [settings, setSettings] = React.useState(store.state)
@@ -3125,6 +3187,7 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
             if (targets.length === 0 && pendingRows.length === 0) return
             setBusy(true)
             setMessage('')
+            setPendingNote('')
             let restarts = 0
             let refreshes = 0
             for (let index = 0; index < targets.length; index += 1) {
@@ -3223,7 +3286,7 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
               if (applyFailed) {
                 setMessage(translate('updates.applyFailed') + (applyError ? '（' + applyError + '）' : ''))
               } else if (appliedPending > 0) {
-                setMessage(translate('updates.applyStarted').replace('{n}', String(appliedPending)))
+                setPendingNote(translate('updates.applyStarted').replace('{n}', String(appliedPending)))
               } else {
                 setMessage(
                   restarts > 0
@@ -3353,6 +3416,11 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
              * `!row.state` was therefore never true and every row looked "busy",
              * which is what pushed the wait label back onto finished rows. */
             const idle = !row.state || row.state === 'idle'
+            /* A queued restart-install keeps state 'applied' until the host comes back.
+             * While the batch is still running it wears the same yellow + moving bar as
+             * a live install; once the log says it is done it turns green like any other
+             * finished row, so the pending area reads the same way as the ready one. */
+            const shownState = row.state === 'applied' ? (applyRunning ? 'running' : 'succeeded') : row.state
             const usingFallback = !!target && target.fallback
             const fallbackShown = usingFallback ? target.version : ''
             /* A running or finished row speaks with its state, not with the plan:
@@ -3361,7 +3429,10 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
             /* A row the host cannot load is not a failed update to retry: it reads
              * as one fact ("this DSH cannot load it"), with the raw failure code
              * left in the log rather than on the card. */
-            const label = row.compat ? '' : (idle ? (quiet || usingFallback ? '' : updateLabel(row)) : updateLabel(row))
+            const stateLabel = row.state === 'applied' && !applyRunning
+              ? translate('updates.succeeded')
+              : updateLabel(row)
+            const label = row.compat ? '' : (idle ? (quiet || usingFallback ? '' : updateLabel(row)) : stateLabel)
             /* Nothing to install yet: say how far the nearest candidate is, so a
              * row that is "waiting" does not look like the plugin forgot it.
              * Only idle rows: a finished row must not read "已更新 · 剩余 5.1 小时". */
@@ -3377,9 +3448,9 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
               'div',
               {
                 className: 'dsuik-up-row'
-                  + (row.state === 'running' ? ' is-running' : '')
-                  + (row.state === 'succeeded' ? ' is-ok' : '')
-                  + (row.state === 'failed' && !row.compat ? ' is-fail' : '')
+                  + (shownState === 'running' ? ' is-running' : '')
+                  + (shownState === 'succeeded' ? ' is-ok' : '')
+                  + (shownState === 'failed' && !row.compat ? ' is-fail' : '')
                   + (isOpen ? ' is-open' : ''),
                 style: { animationDelay: String(Math.min(index, 12) * 18) + 'ms' },
               },
@@ -3426,7 +3497,7 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
                 ),
                 h('span', { className: 'dsuik-up-chev', 'aria-hidden': 'true' }, isOpen ? '▾' : '▸'),
               ),
-              row.state === 'running'
+              shownState === 'running'
                 ? (row.percent === null
                     ? h('div', { className: 'dsuik-up-bar is-indef' }, h('i'))
                     : h('div', { className: 'dsuik-up-bar' }, h('i', { style: { width: String(row.percent || 0) + '%' } })))
@@ -3526,9 +3597,22 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
               ? sectionArea(
                   'updates.section.pending',
                   groups.pending,
-                  true,
+                  false,
                   groups.pending.length > 0 ? 'updates.section.pendingHint' : 'updates.section.pendingEmpty',
                   true,
+                )
+              : null,
+            /* Both of these belong to the restart batch, so they sit under its own
+             * heading instead of under the (often empty) ready list. */
+            phase === 'ready' && pendingNote ? h('p', { className: 'dsuik-up-note is-after-pending' }, pendingNote) : null,
+            phase === 'ready' && batchQueued
+              ? h('div', { className: 'dsuik-up-log' },
+                  h('div', { className: 'dsuik-up-log-head' }, translate('updates.logTitle')),
+                  applyLog.length > 0
+                    ? applyLog.map(function (line, index) {
+                        return h('div', { className: 'dsuik-up-log-line', key: 'log' + index }, line)
+                      })
+                    : h('div', { className: 'dsuik-up-log-line is-empty' }, translate('updates.logWaiting')),
                 )
               : null,
             phase === 'ready' ? sectionArea('updates.section.waiting', groups.waiting, true, 'updates.section.waitingHint', false) : null,
@@ -3572,6 +3656,11 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
 .dsuik-up-section-title{margin:0;font-size:12.5px;font-weight:600;letter-spacing:.01em;color:var(--dsw-alias-label-primary);}
 .dsuik-up-section.is-muted .dsuik-up-row{opacity:.7;background:transparent;}
 .dsuik-up-note.is-after-ready{margin-top:-4px;}
+.dsuik-up-note.is-after-pending{margin-top:-2px;}
+.dsuik-up-log{margin:-4px 0 2px;padding:8px 10px;border:1px solid var(--dsw-alias-border-l1);border-radius:10px;background:var(--dsw-alias-bg-layer-1);max-height:150px;overflow:auto;}
+.dsuik-up-log-head{font-size:11.5px;font-weight:600;color:var(--dsw-alias-label-secondary);margin-bottom:4px;}
+.dsuik-up-log-line{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;line-height:1.5;color:var(--dsw-alias-label-secondary);white-space:pre-wrap;word-break:break-all;}
+.dsuik-up-log-line.is-empty{font-style:italic;}
 .dsuik-up-note.is-empty{padding:10px 12px;border:1px dashed var(--dsw-alias-border-l1);border-radius:10px;}
 .dsuik-up-loading{display:flex;align-items:center;justify-content:center;gap:8px;padding:34px 0 30px;font-size:13px;color:var(--dsw-alias-label-secondary);animation:dsuik-up-in .2s ease-out both;}
 @media (prefers-reduced-motion: reduce){.dsuik-up-section,.dsuik-up-row,.dsuik-up-loading{animation:none;}}

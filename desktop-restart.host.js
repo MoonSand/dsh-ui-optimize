@@ -56,6 +56,7 @@ const DIAGNOSE_PATH = `${PREFIX}/diagnose`
  *  does the pnpm run *after* this reply flushes, then asks the fnOS gateway to
  *  restart DSH so the new versions are what actually loads. */
 const APPLY_PATH = `${PREFIX}/apply`
+const APPLY_LOG_PATH = `${PREFIX}/apply/log`
 
 /** Where the detached apply run keeps its log and backups. */
 const APPLY_DIR = join(process.env.DSH_HOME || tmpdir(), '.ui-optimize')
@@ -752,8 +753,12 @@ function writeApplyScript(specs) {
     '  cp -p pnpm-lock.yaml.bak-' + stamp + ' pnpm-lock.yaml 2>/dev/null || true',
     'else',
     '  echo "pnpm ok — asking the gateway to restart DSH"',
-    '  curl -sS -m 20 --unix-socket ' + JSON.stringify(process.env.DSH_GATEWAY_SOCK || '/vol1/@appcenter/fn-deepseek-harness/app.sock') +
-      ' -X POST -H "x-requested-with: fetch" -H "x-trim-isadmin: true" http://localhost/__fnos-gateway/control/web/restart >/dev/null 2>&1 || echo "restart request failed"',
+    /* Fire and forget: the gateway answers only after it has stopped this process, so
+     * waiting for the response here can only ever end in a timeout — and a timeout that
+     * leaves DSH running, which is exactly what happened on 2026-11-23 01:00. */
+    '  ( curl -sS -m 3 --unix-socket ' + JSON.stringify(process.env.DSH_GATEWAY_SOCK || '/vol1/@appcenter/fn-deepseek-harness/app.sock') +
+      ' -X POST -H "x-requested-with: fetch" -H "x-trim-isadmin: true" http://localhost/__fnos-gateway/control/web/restart >/dev/null 2>&1 & )',
+    '  echo "restart requested — not waiting, the gateway is about to stop this process"',
     'fi',
     'echo "== $(date -Is) apply done (rc=$rc) =="',
   ]
@@ -870,6 +875,38 @@ async function handleRequest(ctx, request, response) {
       diagnostic: status ?? { armed: false, reason: 'helper did not report in time' },
       logPath: HELPER_LOG_PATH,
     })
+  }
+  if (pathname === APPLY_LOG_PATH) {
+    // Progress for the restart batch: the child does all its work in one pnpm run, so the
+    // only honest progress report is its own log. Reading it costs one small file read.
+    if (request.method !== 'GET') return reply(405, { ok: false, reason: 'method-not-allowed' })
+    const logPath = join(APPLY_DIR, 'apply.log')
+    if (!existsSync(logPath)) return reply(200, { ok: true, lines: [], running: false, mtime: null })
+    let text = ''
+    try {
+      text = readFileSync(logPath, 'utf8')
+    } catch {
+      text = ''
+    }
+    const all = text.split('\n').filter(function (line) { return line.trim().length > 0 })
+    let mtime = null
+    try {
+      mtime = statSync(logPath).mtime.toISOString()
+    } catch {
+      mtime = null
+    }
+    let lastStart = -1
+    for (let i = all.length - 1; i >= 0; i -= 1) {
+      if (all[i].indexOf('apply start') !== -1) {
+        lastStart = i
+        break
+      }
+    }
+    const running = lastStart >= 0 && !all.slice(lastStart).some(function (line) { return line.indexOf('apply done') !== -1 })
+    /* Only the current run: older runs are history, and showing them made a finished
+     * batch look like it was still installing. */
+    const current = lastStart >= 0 ? all.slice(lastStart) : []
+    return reply(200, { ok: true, lines: current.slice(-60), running, mtime })
   }
   if (pathname === APPLY_PATH) {
     if (request.method !== 'POST') return reply(405, { ok: false, reason: 'method-not-allowed' })
