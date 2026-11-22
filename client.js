@@ -137,9 +137,8 @@ window.__ModuleLoader__.load({
         'updates.section.blocked': 'Not loadable on this DSH',
         'updates.section.blockedHint': 'The running DSH version cannot load these releases. Upgrade DSH first, or wait for the plugin to publish a compatible one.',
         'updates.compatTag': 'Needs {version}',
-        'updates.applyStarted': 'Installing {n} more that were loaded — DSH restarts when that finishes, so this page drops for a moment.',
+        'updates.applyStarted': '{n} loaded plugin(s) are queued: DSH stops once, installs the whole batch, then starts once — not one restart per plugin. The page reconnects on its own.',
         'updates.applyFailed': 'Could not start the background install. Try again in a moment.',
-        'updates.pendingStarting': 'Stopping DSH, installing, then starting again — the page reconnects on its own.',
         'updates.waitingRestart': 'waiting for restart',
         'updates.compatTagUnknown': 'Not loadable on this DSH',
         'updates.queued': 'Queued',
@@ -255,9 +254,8 @@ window.__ModuleLoader__.load({
         'updates.section.blocked': '与当前 DSH 不兼容',
         'updates.section.blockedHint': '当前运行的 DSH 版本加载不了这些版本。先升级 DSH，或等插件发布兼容版本。',
         'updates.compatTag': '需要 {version}',
-        'updates.applyStarted': '另外 {n} 个正在运行的插件已开始安装——装完会自动重启 DSH，页面会短暂断开，稍后刷新即可。',
+        'updates.applyStarted': '{n} 个插件正在运行的，会一起停机安装：DSH 先退出、这批一次装完、再启动一次（不是每个插件重启一遍）。装完页面会自动重连。',
         'updates.applyFailed': '后台安装没能启动，稍后再试一次。',
-        'updates.pendingStarting': '正在停掉 DSH 安装新版本，随后自动启动——页面会自己重连。',
         'updates.waitingRestart': '等待重启',
         'updates.compatTagUnknown': '与当前 DSH 不兼容',
         'updates.queued': '排队中',
@@ -1740,13 +1738,26 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
            * 0.2.2-rc.3), so `row.parentElement` is a one-child wrapper, not the
            * list. Walk up through single-child wrappers to find the real list:
            * hiding that list's other children is what folds the menu. */
+          /* The list is a real <nav>; anchors beat guessing wrapper depth.
+           * Rows now live inside `panelEntry` divs that also hold an unpin
+           * button, so counting children never finds the list. */
+          const navElement = typeof row.closest === 'function' ? row.closest('nav') : null
           let entry = row
-          for (let depth = 0; depth < 5; depth += 1) {
-            const parent = entry.parentElement
-            if (!parent || parent.children.length !== 1) break
-            entry = parent
+          if (navElement) {
+            for (const child of Array.from(navElement.children)) {
+              if (child !== row && child.contains(row)) {
+                entry = child
+                break
+              }
+            }
+          } else {
+            for (let depth = 0; depth < 5; depth += 1) {
+              const parent = entry.parentElement
+              if (!parent || parent.children.length !== 1) break
+              entry = parent
+            }
           }
-          const list = entry.parentElement
+          const list = navElement || entry.parentElement
           const nav = list || row.parentElement
           const root = nav ? nav.parentElement : null
           if (!root) return undefined
@@ -2386,11 +2397,16 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
           const installed = (listed.value || []).filter(function (item) {
             return item && item.installed === true
           })
-          /* `updatable` is the Host's own verdict: a registry dependency saved
-           * under its own name with a semver version. Links and local paths are
-           * excluded for us — updating those would overwrite the checkout. */
+          /* The Host's own verdict on whether this bundle can be replaced from a
+           * registry. Newer hosts (0.2.2-rc.5+) dropped the boolean `updatable`
+           * for `update: 'registry' | 'git'`; keep both so the list does not go
+           * empty on either side. Links and local paths stay excluded — updating
+           * those would overwrite the checkout. */
           const candidates = installed.filter(function (item) {
-            return item.updatable === true && typeof item.version === 'string' && item.version !== ''
+            if (!item || typeof item.version !== 'string' || item.version === '') return false
+            if (item.update === 'registry') return true
+            if (item.update === 'git') return false
+            return item.updatable === true
           })
           const found = []
           const stats = { tried: 0, failed: 0 }
@@ -3168,8 +3184,12 @@ button.muik-shelf-row:focus-visible{outline:2px solid var(--dsw-alias-brand-prim
                 /* The host answers 202 before pnpm starts, so show the batch as in
                  * flight right away — otherwise the click looks like a no-op until
                  * the page reloads under the new DSH process. */
+                /* No per-row sentence here: the batch is one restart for all of
+                 * them, so repeating "stopping DSH..." on every card reads like
+                 * each plugin reboots the host on its own. The line under the
+                 * batch says it once. */
                 pendingRows.forEach(function (row) {
-                  patch(row.name, { state: 'applied', percent: null, detail: translate('updates.pendingStarting') })
+                  patch(row.name, { state: 'applied', percent: null, detail: '' })
                 })
               } catch (err) {
                 applyFailed = true
